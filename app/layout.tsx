@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
+import Navigation from "./components/Navigation";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,16 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-b from-white to-zinc-50 dark:from-zinc-950 dark:to-zinc-900 min-h-screen text-zinc-900 dark:text-zinc-100`}>
-        <div className="border-b border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/60 backdrop-blur supports-[backdrop-filter]:bg-white/50 sticky top-0 z-50">
-          <nav className="max-w-6xl mx-auto flex items-center justify-between h-14 px-4">
-            <Link href="/" className="font-semibold tracking-tight text-lg">PokerPlace</Link>
-            <div className="flex items-center gap-4 text-sm">
-              <Link href="/clubs" className="hover:underline underline-offset-4">Clubs</Link>
-              <Link href="/auth" className="hover:underline underline-offset-4">Sign in</Link>
-              <a href="#disclaimer" className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">Disclaimer</a>
-            </div>
-          </nav>
-        </div>
+        <Navigation />
         <main className="max-w-6xl mx-auto px-4 py-6">
           {children}
         </main>

@@ -1,26 +1,175 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* App background helper */
+.bg-app {
+  @apply bg-brand-gradient min-h-screen text-white;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Card presets */
+.card-emerald {
+  @apply bg-emerald-gradient text-white rounded-2xl shadow-glow;
+}
+.card-teal {
+  @apply bg-teal-gradient text-white rounded-2xl shadow-glow;
+}
+.card-olive {
+  @apply bg-olive-gradient text-white rounded-2xl shadow-glow;
+}
+
+/* CTA buttons tied to their cards */
+.btn-emerald { @apply bg-emerald hover:bg-emerald-dark transition-all duration-200 ease-soft; }
+.btn-teal    { @apply bg-teal hover:bg-teal-dark transition-all duration-200 ease-soft; }
+.btn-olive   { @apply bg-olive hover:bg-olive-dark transition-all duration-200 ease-soft; }
+
+/* Accent utility to echo the logo red for important CTAs */
+.btn-accent  { @apply bg-brand-red hover:brightness-110 text-white transition-all duration-200 ease-soft; }
+
+/* Modern Card Themes with new color scheme */
+@layer components {
+  .card-modern {
+    @apply relative overflow-hidden rounded-2xl border border-emerald/20 bg-emerald-gradient backdrop-blur-sm;
+    @apply hover:bg-emerald-dark transition-all duration-300 ease-soft;
+    @apply hover:shadow-glow hover:scale-[1.02] hover:-translate-y-1;
+  }
+
+  .card-glass {
+    @apply relative overflow-hidden rounded-2xl border border-teal/20 bg-teal-gradient backdrop-blur-md;
+    @apply hover:bg-teal-dark transition-all duration-300 ease-soft;
+    @apply hover:shadow-glow;
+  }
+
+  .card-gradient {
+    @apply relative overflow-hidden rounded-2xl border-0 bg-olive-gradient;
+    @apply hover:bg-olive-dark transition-all duration-300 ease-soft;
+    @apply hover:shadow-glow hover:scale-[1.02] hover:-translate-y-1;
+  }
+
+  .icon-modern {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
+    @apply bg-emerald-mint/20 backdrop-blur-sm;
+    @apply group-hover:bg-emerald-mint/30 transition-all duration-300 ease-soft;
+    @apply shadow-glow;
+  }
+
+  .icon-glass {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
+    @apply bg-teal-accent/20 backdrop-blur-sm;
+    @apply group-hover:bg-teal-accent/30 transition-all duration-300 ease-soft;
+    @apply border border-teal-accent/20;
+  }
+
+  .icon-gradient {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
+    @apply bg-olive-lime/20 backdrop-blur-sm;
+    @apply group-hover:bg-olive-lime/30 transition-all duration-300 ease-soft;
+    @apply border border-olive-lime/20;
+  }
+
+  /* Button Enhancements */
+  .btn-modern {
+    @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium;
+    @apply bg-emerald hover:bg-emerald-dark text-white;
+    @apply transition-all duration-300 ease-soft hover:shadow-glow;
+    @apply hover:scale-105;
+  }
+
+  .btn-outline-modern {
+    @apply inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium;
+    @apply border-emerald-mint/30 text-emerald-mint;
+    @apply hover:bg-emerald-mint/10 transition-all duration-300 ease-soft;
+    @apply hover:scale-105;
+  }
+
+  /* Text Enhancements */
+  .text-gradient {
+    @apply bg-gradient-to-r from-emerald-mint to-teal-accent bg-clip-text text-transparent;
+  }
+
+  .text-glow {
+    @apply text-white drop-shadow-sm;
+  }
+
+  /* Animation Classes */
+  .animate-fade-in {
+    animation: fadeIn 0.6s var(--ease-soft) both;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s var(--ease-soft) both;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounceSubtle 2s infinite;
+  }
+
+  /* Loading Spinner Enhancement */
+  .spinner-modern {
+    @apply animate-spin rounded-full border-2 border-emerald/30;
+    @apply border-t-emerald-mint;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-brand-bg3;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-emerald/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-emerald/70;
+}
+
+/* Selection Styling */
+::selection {
+  @apply bg-emerald-mint/20;
+}
+
+/* Focus Styles */
+.focus-modern:focus {
+  @apply outline-none ring-2 ring-emerald-mint/20 ring-offset-2 ring-offset-brand-bg1;
 }
