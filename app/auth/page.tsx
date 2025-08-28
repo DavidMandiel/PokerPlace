@@ -104,118 +104,146 @@ export default function AuthPage() {
   }, []);
 
   return (
-    <div className="max-w-md mx-auto">
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in to PokerPlace</h1>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Use Google or email to continue.
-      </p>
-      
-      <div className="mt-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-6 bg-white/60 dark:bg-zinc-950/50">
-        <Auth 
-          supabaseClient={supabase} 
-          view="sign_in"
-          appearance={{ 
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: '#18181b',
-                  brandAccent: '#52525b',
-                  inputBackground: '#ffffff',
-                  inputText: '#18181b',
-                  inputBorder: '#d4d4d8',
-                  inputLabelText: '#52525b',
-                }
-              },
-              dark: {
-                colors: {
-                  brand: '#fafafa',
-                  brandAccent: '#a1a1aa',
-                  inputBackground: '#27272a',
-                  inputText: '#fafafa',
-                  inputBorder: '#52525b',
-                  inputLabelText: '#a1a1aa',
+    <div className="bg-app flex items-center justify-center min-h-screen p-4">
+      <div className="w-full max-w-md animate-fade-in">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gradient mb-2">Welcome Back</h1>
+          <p className="text-emerald-mintSoft">
+            Sign in to your PokerPlace account
+          </p>
+        </div>
+        
+        <div className="card-emerald p-8">
+          <Auth 
+            supabaseClient={supabase} 
+            view="sign_in"
+            appearance={{ 
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: '#145a4a',
+                    brandAccent: '#4fd1a1',
+                    inputBackground: '#ffffff',
+                    inputText: '#0b2c2c',
+                    inputBorder: '#4fd1a1',
+                    inputLabelText: '#4fd1a1',
+                  }
+                },
+                dark: {
+                  colors: {
+                    brand: '#145a4a',
+                    brandAccent: '#4fd1a1',
+                    inputBackground: '#0b2c2c',
+                    inputText: '#ffffff',
+                    inputBorder: '#4fd1a1',
+                    inputLabelText: '#4fd1a1',
+                  }
                 }
               }
-            }
-          }} 
-          providers={["google"]}
-          redirectTo={`${window.location.origin}/dashboard`}
-          showLinks={true}
-        />
+            }} 
+            providers={["google"]}
+            redirectTo={`${window.location.origin}/dashboard`}
+            showLinks={true}
+          />
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-emerald-mintSoft">
+            Don't have an account?{" "}
+            <Link href="/auth/signup" className="text-emerald-mint hover:underline font-medium transition-colors">
+              Create account
+            </Link>
+          </p>
+        </div>
+
+        <style jsx global>{`
+          /* Only hide sign-up links within the Auth component, not our custom link */
+          [data-testid="ui-anchor"]:has(a[href*="sign_up"]),
+          [data-testid="ui-anchor"]:has(a[href*="signup"]),
+          .supabase-auth-ui_ui-anchor:has(a[href*="sign_up"]),
+          .supabase-auth-ui_ui-anchor:has(a[href*="signup"]) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+          }
+          
+          /* Ensure our custom link is visible */
+          .mt-6 a[href="/auth/signup"] {
+            display: inline !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
+
+          /* Fix input field styling for better contrast */
+          .supabase-auth-ui_ui-input {
+            background-color: #0b2c2c !important;
+            color: #ffffff !important;
+            border-color: #4fd1a1 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1rem !important;
+          }
+
+          .supabase-auth-ui_ui-input::placeholder {
+            color: #7ddfc3 !important;
+          }
+
+          .supabase-auth-ui_ui-input:focus {
+            border-color: #4fd1a1 !important;
+            box-shadow: 0 0 0 2px rgba(79, 209, 161, 0.2) !important;
+            outline: none !important;
+          }
+
+          /* Fix button styling */
+          .supabase-auth-ui_ui-button {
+            background-color: #145a4a !important;
+            color: #ffffff !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1.5rem !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease !important;
+          }
+
+          .supabase-auth-ui_ui-button:hover {
+            background-color: #0e3b2f !important;
+            transform: translateY(-1px) !important;
+          }
+
+          /* Fix label styling */
+          .supabase-auth-ui_ui-label {
+            color: #4fd1a1 !important;
+            font-weight: 500 !important;
+            margin-bottom: 0.5rem !important;
+          }
+
+          /* Fix divider styling */
+          .supabase-auth-ui_ui-divider {
+            color: #7ddfc3 !important;
+          }
+
+          /* Fix anchor styling */
+          .supabase-auth-ui_ui-anchor {
+            color: #4fd1a1 !important;
+            text-decoration: none !important;
+          }
+
+          .supabase-auth-ui_ui-anchor:hover {
+            color: #7ddfc3 !important;
+            text-decoration: underline !important;
+          }
+
+          /* Fix message styling */
+          .supabase-auth-ui_ui-message {
+            background-color: rgba(79, 209, 161, 0.1) !important;
+            color: #4fd1a1 !important;
+            border: 1px solid rgba(79, 209, 161, 0.2) !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem !important;
+          }
+        `}</style>
       </div>
-
-      <div className="mt-4 text-center text-sm">
-        <p>
-          Don't have an account?{" "}
-          <Link href="/auth/signup" className="text-zinc-900 dark:text-zinc-100 hover:underline font-medium">
-            Create account
-          </Link>
-        </p>
-      </div>
-
-      <style jsx global>{`
-        /* Only hide sign-up links within the Auth component, not our custom link */
-        [data-testid="ui-anchor"]:has(a[href*="sign_up"]),
-        [data-testid="ui-anchor"]:has(a[href*="signup"]),
-        .supabase-auth-ui_ui-anchor:has(a[href*="sign_up"]),
-        .supabase-auth-ui_ui-anchor:has(a[href*="signup"]) {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          height: 0 !important;
-          overflow: hidden !important;
-        }
-        
-        /* Ensure our custom link is visible */
-        .mt-4 a[href="/auth/signup"] {
-          display: inline !important;
-          visibility: visible !important;
-          opacity: 1 !important;
-        }
-
-        /* Fix input field styling for better contrast */
-        .supabase-auth-ui_ui-input {
-          background-color: #ffffff !important;
-          color: #18181b !important;
-          border-color: #d4d4d8 !important;
-        }
-
-        .supabase-auth-ui_ui-input::placeholder {
-          color: #71717a !important;
-        }
-
-        /* Dark mode input styling */
-        .dark .supabase-auth-ui_ui-input {
-          background-color: #27272a !important;
-          color: #fafafa !important;
-          border-color: #52525b !important;
-        }
-
-        .dark .supabase-auth-ui_ui-input::placeholder {
-          color: #a1a1aa !important;
-        }
-
-        /* Fix button styling */
-        .supabase-auth-ui_ui-button {
-          background-color: #18181b !important;
-          color: #ffffff !important;
-        }
-
-        .dark .supabase-auth-ui_ui-button {
-          background-color: #fafafa !important;
-          color: #18181b !important;
-        }
-
-        /* Fix label styling */
-        .supabase-auth-ui_ui-label {
-          color: #52525b !important;
-        }
-
-        .dark .supabase-auth-ui_ui-label {
-          color: #a1a1aa !important;
-        }
-      `}</style>
     </div>
   );
 }

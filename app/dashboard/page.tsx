@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { Plus, Users, Calendar, Settings, Crown } from "lucide-react";
+import { Plus, Users, Calendar, Edit, Crown, Trash2 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = SupabaseUser;
@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [joinedClubs, setJoinedClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingClubs, setLoadingClubs] = useState(true);
+  const [deletingClub, setDeletingClub] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,7 +61,7 @@ export default function DashboardPage() {
           city,
           visibility,
           description,
-          club_members!inner(user_id),
+          club_members(user_id),
           events(id)
         `)
         .eq('owner_id', userId)
@@ -122,12 +124,43 @@ export default function DashboardPage() {
         };
       }) || [];
 
+      console.log('Raw owned data:', ownedData);
+      console.log('Transformed owned clubs:', transformedOwnedClubs);
+      console.log('Transformed joined clubs:', transformedJoinedClubs);
+      
       setOwnedClubs(transformedOwnedClubs);
       setJoinedClubs(transformedJoinedClubs);
     } catch (error) {
       console.error('Error fetching clubs:', error);
     } finally {
       setLoadingClubs(false);
+    }
+  };
+
+  const handleDeleteClub = async (clubId: string) => {
+    setDeletingClub(clubId);
+    try {
+      const response = await fetch(`/api/clubs/${clubId}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete club');
+      }
+
+      // Remove the club from the local state
+      setOwnedClubs(prev => prev.filter(club => club.id !== clubId));
+      console.log('Club deleted successfully');
+    } catch (error) {
+      console.error('Error deleting club:', error);
+      alert(error instanceof Error ? error.message : 'An unexpected error occurred while deleting the club.');
+    } finally {
+      setDeletingClub(null);
+      setShowDeleteConfirm(null);
     }
   };
 
@@ -268,34 +301,61 @@ export default function DashboardPage() {
                   <Crown className="w-5 h-5 text-brand-red" />
                   <span className="text-gradient">Clubs You Manage</span>
                 </h3>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-4">
                   {ownedClubs.map((club) => (
                     <div
                       key={club.id}
-                      className="card-emerald p-6"
+                      className="card-emerald p-6 relative"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold text-lg text-glow">{club.name}</h3>
+                                             {/* Club Logo */}
+                       <div className="absolute top-4 left-4 w-16 h-16">
+                         {club.icon ? (
+                           <img 
+                             src={club.icon} 
+                             alt={`${club.name} icon`}
+                             className="w-full h-full object-cover rounded-sm border border-emerald-mint/50"
+                           />
+                         ) : (
+                           <div className="w-full h-full bg-emerald-mint/30 rounded-sm border border-emerald-mint/50 flex items-center justify-center">
+                             <span className="text-2xl font-bold text-emerald-mint">
+                               {club.name.charAt(0).toUpperCase()}
+                             </span>
+                           </div>
+                         )}
+                       </div>
+
+                                             <div className="flex items-start justify-between mb-4 pl-20">
+                                                 <div>
+                           <h3 className="font-semibold text-4xl text-glow">{club.name}</h3>
                           <p className="text-emerald-mintSoft">
                             {club.city} • {club.visibility}
                           </p>
                         </div>
-                        <Link
-                          href={`/clubs/${club.slug}/settings`}
-                          className="p-2 rounded-xl hover:bg-emerald-dark transition-colors"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Link>
+                                                 <div className="flex items-center gap-2">
+                           <Link
+                             href={`/clubs/${club.slug}/edit`}
+                             className="p-4 rounded-xl hover:bg-emerald-dark transition-colors"
+                             title="Edit Club"
+                           >
+                             <Edit className="w-8 h-8" />
+                           </Link>
+                           <button
+                             onClick={() => setShowDeleteConfirm(club.id)}
+                             className="p-4 rounded-xl hover:bg-brand-red/20 transition-colors text-brand-red"
+                             title="Delete Club"
+                           >
+                             <Trash2 className="w-8 h-8" />
+                           </button>
+                         </div>
                       </div>
 
-                      {club.description && (
-                        <p className="text-emerald-mintSoft mb-4 line-clamp-2">
-                          {club.description}
-                        </p>
-                      )}
+                                             {club.description && (
+                         <p className="text-emerald-mintSoft mb-4 line-clamp-2 pl-20">
+                           {club.description}
+                         </p>
+                       )}
 
-                      <div className="flex items-center gap-4 text-sm text-emerald-mintSoft mb-4">
+                       <div className="flex items-center gap-4 text-sm text-emerald-mintSoft mb-4 pl-20">
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
                           {club.member_count} members
@@ -306,7 +366,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                                             <div className="flex gap-2 pl-20">
                         <Link
                           href={`/clubs/${club.slug}`}
                           className="flex-1 text-center btn-emerald rounded-xl"
@@ -333,26 +393,43 @@ export default function DashboardPage() {
                   <Users className="w-5 h-5 text-teal-accent" />
                   <span className="text-gradient">Clubs You've Joined</span>
                 </h3>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-4">
                   {joinedClubs.map((club) => (
                     <div
                       key={club.id}
-                      className="card-teal p-6"
+                      className="card-teal p-6 relative"
                     >
-                      <div className="mb-4">
-                        <h3 className="font-semibold text-lg text-glow">{club.name}</h3>
+                                             {/* Club Logo */}
+                       <div className="absolute top-4 left-4 w-16 h-16">
+                         {club.icon ? (
+                           <img 
+                             src={club.icon} 
+                             alt={`${club.name} icon`}
+                             className="w-full h-full object-cover rounded-sm border border-teal-accent/50"
+                           />
+                         ) : (
+                           <div className="w-full h-full bg-teal-accent/30 rounded-sm border border-teal-accent/50 flex items-center justify-center">
+                             <span className="text-2xl font-bold text-teal-accent">
+                               {club.name.charAt(0).toUpperCase()}
+                             </span>
+                           </div>
+                         )}
+                       </div>
+
+                                                                    <div className="mb-4 pl-20">
+                         <h3 className="font-semibold text-4xl text-glow">{club.name}</h3>
                         <p className="text-teal-soft">
                           {club.city} • {club.visibility}
                         </p>
                       </div>
 
-                      {club.description && (
-                        <p className="text-teal-soft mb-4 line-clamp-2">
-                          {club.description}
-                        </p>
-                      )}
+                                             {club.description && (
+                         <p className="text-teal-soft mb-4 line-clamp-2 pl-20">
+                           {club.description}
+                         </p>
+                       )}
 
-                      <div className="flex items-center gap-4 text-sm text-teal-soft mb-4">
+                       <div className="flex items-center gap-4 text-sm text-teal-soft mb-4 pl-20">
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
                           {club.member_count} members
@@ -363,12 +440,14 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      <Link
-                        href={`/clubs/${club.slug}`}
-                        className="w-full text-center btn-teal rounded-xl"
-                      >
-                        View Club
-                      </Link>
+                                             <div className="pl-20">
+                        <Link
+                          href={`/clubs/${club.slug}`}
+                          className="w-full text-center btn-teal rounded-xl"
+                        >
+                          View Club
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -444,6 +523,44 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card-emerald p-6 max-w-md w-full">
+            <div className="text-center">
+              <Trash2 className="w-12 h-12 text-brand-red mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2 text-gradient">Delete Club</h3>
+              <p className="text-emerald-mintSoft mb-6">
+                Are you sure you want to delete this club? This action cannot be undone and will remove all members and events.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => handleDeleteClub(showDeleteConfirm)}
+                  disabled={deletingClub === showDeleteConfirm}
+                  className="btn-accent rounded-xl px-6 py-2 disabled:opacity-60"
+                >
+                  {deletingClub === showDeleteConfirm ? (
+                    <div className="flex items-center gap-2">
+                      <div className="spinner-modern h-4 w-4"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    'Delete Club'
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  disabled={deletingClub === showDeleteConfirm}
+                  className="btn-outline-modern rounded-xl px-6 py-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
