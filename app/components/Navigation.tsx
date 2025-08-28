@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import Image from "next/image";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = SupabaseUser;
@@ -41,32 +42,40 @@ export default function Navigation() {
   };
 
   return (
-    <div className="border-b border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/60 backdrop-blur supports-[backdrop-filter]:bg-white/50 sticky top-0 z-50">
-      <nav className="max-w-6xl mx-auto flex items-center justify-between h-14 px-4">
-        <Link href="/" className="font-semibold tracking-tight text-lg">PokerPlace</Link>
+    <div className="sticky top-0 z-50">
+      <nav className="max-w-7xl mx-auto flex items-center justify-between h-20 px-8">
+        <Link href="/" className="flex-shrink-0 mr-12 -ml-5">
+          <Image 
+            src="/icon-app.png" 
+            alt="PokerPlace" 
+            width={64} 
+            height={64} 
+            className="w-16 h-16"
+          />
+        </Link>
         <div className="flex items-center gap-4 text-sm">
-          <Link href="/clubs" className="hover:underline underline-offset-4">Clubs</Link>
+          <Link href="/clubs" className="text-emerald-mint/90 hover:text-emerald-mint hover:underline underline-offset-4 whitespace-nowrap">Clubs</Link>
           
           {!loading && (
             <>
               {user ? (
                 <div className="flex items-center gap-4">
-                  <Link href="/dashboard" className="hover:underline underline-offset-4">Dashboard</Link>
+                  <Link href="/dashboard" className="text-emerald-mint/90 hover:text-emerald-mint hover:underline underline-offset-4 whitespace-nowrap">Dashboard</Link>
                   <button
                     onClick={handleSignOut}
-                    className="inline-flex items-center gap-2 hover:underline underline-offset-4"
+                    className="inline-flex items-center gap-2 text-emerald-mint/90 hover:text-emerald-mint hover:underline underline-offset-4 whitespace-nowrap"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign out
                   </button>
                 </div>
               ) : (
-                <Link href="/auth" className="hover:underline underline-offset-4">Sign in</Link>
+                <Link href="/auth" className="text-emerald-mint/90 hover:text-emerald-mint hover:underline underline-offset-4 whitespace-nowrap">Sign in</Link>
               )}
             </>
           )}
           
-          <a href="#disclaimer" className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">Disclaimer</a>
+          <a href="#disclaimer" className="text-emerald-mint/60 hover:text-emerald-mint whitespace-nowrap ml-4">Disclaimer</a>
         </div>
       </nav>
     </div>

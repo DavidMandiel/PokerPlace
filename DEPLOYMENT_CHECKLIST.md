@@ -10,6 +10,17 @@
 - **Location**: Supabase Dashboard → Authentication → Settings → Email Templates
 - **Why**: Security requirement - users must verify their email addresses
 
+#### **Email Provider Configuration (URGENT - Fix Bounce Issue)**
+- **Current State**: Using Supabase default email provider (causing bounce issues)
+- **Production Action**: Set up custom SMTP provider
+- **Location**: Supabase Dashboard → Settings → Auth → SMTP Settings
+- **Recommended Providers**:
+  - **SendGrid**: Free tier available, good deliverability
+  - **Mailgun**: Developer-friendly, good for transactional emails
+  - **Resend**: Modern API, good deliverability
+  - **Postmark**: Excellent deliverability for transactional emails
+- **Why**: Custom SMTP provides better control over sending limits and delivery metrics
+
 #### **Email Templates (OPTIONAL)**
 - **Current State**: Default Supabase templates
 - **Production Action**: Customize email templates with your branding
@@ -18,6 +29,14 @@
   - Confirmation email
   - Password reset email
   - Magic link email
+
+### **2. Development Email Testing (URGENT)**
+- **Current State**: Using invalid test emails (causing bounce issues)
+- **Immediate Action**: Use Supabase CLI with Mailpit for local development
+- **Recommended Approach**:
+  - **Local Development**: Use Supabase CLI with Mailpit (localhost:54324)
+  - **Production Testing**: Use valid disposable email addresses
+- **Why**: Mailpit captures emails locally without sending to real addresses, avoiding bounce issues
 
 ### **2. Database Schema Changes**
 

@@ -17,9 +17,9 @@ export default function TestUserPage() {
     setMessage("");
 
     try {
-      // Create a test user with a real email domain
+      // Create a test user with a valid disposable email domain
       const randomId = Math.random().toString(36).substring(2, 6);
-      const testEmail = `test${randomId}@gmail.com`;
+      const testEmail = `test${randomId}@mailinator.com`;
       
       const { data, error } = await supabase.auth.signUp({
         email: testEmail,
@@ -102,9 +102,9 @@ You can now sign in with these credentials at /auth`);
           <li>Nickname: PokerKing</li>
           <li>Location: Tel Aviv, Israel</li>
         </ul>
-        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-          Note: This creates a real user account. You can use any email format you prefer.
-        </p>
+                 <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+           Note: This creates a real user account. Use your real email address for testing - emails will be sent via SendGrid SMTP.
+         </p>
       </div>
     </div>
   );

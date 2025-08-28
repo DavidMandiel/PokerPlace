@@ -23,7 +23,7 @@ INSERT INTO auth.users (
   recovery_token
 ) VALUES (
   gen_random_uuid(),
-  'test@example.com',
+  'test@mailinator.com',
   crypt('password123', gen_salt('bf')),
   now(),
   now(),
