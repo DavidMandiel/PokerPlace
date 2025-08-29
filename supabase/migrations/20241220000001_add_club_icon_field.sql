@@ -38,3 +38,4 @@ ALTER TABLE clubs ADD COLUMN IF NOT EXISTS icon TEXT;
 --     auth.role() = 'authenticated' AND
 --     (storage.foldername(name))[1] = 'club-icons'
 --   );
+

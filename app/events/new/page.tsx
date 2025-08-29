@@ -1,248 +1,405 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { Calendar, MapPin, Users, Building2, Clock, Eye, EyeOff, Plus } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, Camera, Calendar, Plus, Minus } from "lucide-react";
 
-type OwnedClub = { id: string; name: string };
+type EventType = "tournament" | "cash";
+type GameType = "TNLH" | "PLO" | "7CS" | "Mixed";
 
-export default function NewEventPage() {
+export default function CreateEventPage() {
   const router = useRouter();
-  const supabase = useMemo(() => getBrowserSupabaseClient(), []);
-  const [ownedClubs, setOwnedClubs] = useState<OwnedClub[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [clubId, setClubId] = useState("");
-  const [name, setName] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [venue, setVenue] = useState("");
-  const [visibility, setVisibility] = useState<"public" | "private">("public");
-  const [maxPlayers, setMaxPlayers] = useState<string>("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [eventType, setEventType] = useState<EventType>("tournament");
+  const [gameType, setGameType] = useState<GameType>("TNLH");
+  const [formData, setFormData] = useState({
+    title: "",
+    date: "",
+    time: "",
+    buyin: 100,
+    numberOfTables: 1,
+    playersPerTable: 9,
+    startingStack: 30000,
+    startingBlinds: 100,
+    timePerLevel: 20,
+    blinds: "1/2",
+    remarks: ""
+  });
 
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      const { data } = await supabase
-        .from("clubs")
-        .select("id, name")
-        .eq("owner_id", user.id)
-        .order("name");
-      setOwnedClubs(data || []);
-      setLoading(false);
-    })();
-  }, [supabase]);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-
-    const starts = startsAt ? new Date(startsAt).toISOString() : null;
-    const { error } = await supabase.from("events").insert({
-      club_id: clubId,
-      name,
-      starts_at: starts,
-      venue,
-      visibility,
-      max_players: maxPlayers ? Number(maxPlayers) : null,
-    });
-    
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/events");
-    }
-    
-    setSubmitting(false);
-  }
-
-  const getVisibilityIcon = () => {
-    return visibility === "public" ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />;
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const getVisibilityDescription = () => {
-    return visibility === "public" 
-      ? "Anyone can see and join this event" 
-      : "Only club members can see this event";
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Show success state for 3 seconds then redirect
+    // In a real app, you'd save to database here
+    
+    // Simulate success
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 3000);
   };
 
   return (
-    <div className="bg-app space-y-8 p-4">
+    <div className="min-h-screen bg-app p-4">
       {/* Header */}
-      <div className="flex items-center justify-between animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold text-gradient">Create Event</h1>
-          <p className="text-emerald-mintSoft mt-1">
-            Schedule your next poker game
-          </p>
-        </div>
-        <Link 
-          href="/events" 
-          className="text-emerald-mintSoft hover:text-emerald-mint hover:underline underline-offset-4 transition-colors"
+      <div className="flex items-center justify-between mb-6">
+        <button 
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-emerald-mintSoft hover:text-emerald-mint transition-colors"
         >
-          ← Back to Events
-        </Link>
+          <ArrowLeft className="w-5 h-5" />
+          <span>Back</span>
+        </button>
+        <h1 className="text-xl font-semibold text-glow">Create New Event</h1>
+        <div className="w-10"></div> {/* Spacer */}
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="spinner-modern h-8 w-8 mx-auto mb-4"></div>
-          <p className="text-emerald-mintSoft">Loading your clubs...</p>
-        </div>
-      ) : ownedClubs.length === 0 ? (
-        <div className="text-center py-12 card-emerald">
-          <Building2 className="w-12 h-12 text-emerald-mint mx-auto mb-4 animate-bounce-subtle" />
-          <h3 className="text-lg font-semibold mb-2 text-gradient">No clubs to create events in</h3>
-          <p className="text-emerald-mintSoft mb-4">
-            You need to own a club to create events. Create a club first.
-          </p>
-          <Link
-            href="/clubs/new"
-            className="btn-accent rounded-xl px-6 py-3 inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Create Club
-          </Link>
-        </div>
-      ) : (
-        <div className="card-emerald p-8 animate-slide-up">
-          <form onSubmit={onSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-xl bg-brand-red/10 border border-brand-red/20 p-4 text-sm text-brand-red">
-                {error}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Event Details */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+              Event Title
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => handleInputChange("title", e.target.value)}
+              placeholder="Sunday Omaha Cash"
+              className="w-full bg-white/5 border border-emerald-mint/20 rounded-lg px-4 py-3 text-emerald-mintSoft placeholder-emerald-mintSoft/50 focus:outline-none focus:border-emerald-mint/40"
+              required
+            />
+          </div>
+
+          {/* Picture Upload */}
+          <div>
+            <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+              Picture
+            </label>
+            <div className="w-24 h-24 bg-white/5 border border-emerald-mint/20 rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors">
+              <Camera className="w-8 h-8 text-emerald-mintSoft" />
+            </div>
+          </div>
+
+          {/* Date & Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                Date
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-emerald-mintSoft" />
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => handleInputChange("date", e.target.value)}
+                  className="w-full bg-white/5 border border-emerald-mint/20 rounded-lg pl-10 pr-4 py-3 text-emerald-mintSoft focus:outline-none focus:border-emerald-mint/40"
+                  required
+                />
               </div>
-            )}
-
-            {/* Club Selection */}
-            <div>
-              <label className="block text-sm font-medium text-emerald-mint mb-2">
-                <Building2 className="w-4 h-4 inline mr-2" />
-                Club *
-              </label>
-              <select 
-                value={clubId} 
-                onChange={(e) => setClubId(e.target.value)} 
-                required 
-                className="w-full rounded-xl border border-emerald-mint/30 bg-brand-bg1 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-mint/20 focus:border-emerald-mint transition-all duration-200"
-              >
-                <option value="" disabled>Select a club</option>
-                {ownedClubs.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
             </div>
-
-            {/* Event Name */}
             <div>
-              <label className="block text-sm font-medium text-emerald-mint mb-2">
-                <Calendar className="w-4 h-4 inline mr-2" />
-                Event Name *
+              <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                Time
               </label>
-              <input 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                required 
-                placeholder="e.g., Friday Night Tournament"
-                className="w-full rounded-xl border border-emerald-mint/30 bg-brand-bg1 px-4 py-3 text-sm text-white placeholder-emerald-mintSoft focus:outline-none focus:ring-2 focus:ring-emerald-mint/20 focus:border-emerald-mint transition-all duration-200" 
+              <input
+                type="time"
+                value={formData.time}
+                onChange={(e) => handleInputChange("time", e.target.value)}
+                className="w-full bg-white/5 border border-emerald-mint/20 rounded-lg px-4 py-3 text-emerald-mintSoft focus:outline-none focus:border-emerald-mint/40"
+                required
               />
             </div>
-
-            {/* Start Time */}
-            <div>
-              <label className="block text-sm font-medium text-emerald-mint mb-2">
-                <Clock className="w-4 h-4 inline mr-2" />
-                Start Time *
-              </label>
-              <input 
-                type="datetime-local" 
-                value={startsAt} 
-                onChange={(e) => setStartsAt(e.target.value)} 
-                required 
-                className="w-full rounded-xl border border-emerald-mint/30 bg-brand-bg1 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-mint/20 focus:border-emerald-mint transition-all duration-200" 
-              />
-            </div>
-
-            {/* Venue */}
-            <div>
-              <label className="block text-sm font-medium text-emerald-mint mb-2">
-                <MapPin className="w-4 h-4 inline mr-2" />
-                Venue *
-              </label>
-              <input 
-                value={venue} 
-                onChange={(e) => setVenue(e.target.value)} 
-                required 
-                placeholder="e.g., Community Center, 123 Main St"
-                className="w-full rounded-xl border border-emerald-mint/30 bg-brand-bg1 px-4 py-3 text-sm text-white placeholder-emerald-mintSoft focus:outline-none focus:ring-2 focus:ring-emerald-mint/20 focus:border-emerald-mint transition-all duration-200" 
-              />
-            </div>
-
-            {/* Visibility */}
-            <div>
-              <label className="block text-sm font-medium text-emerald-mint mb-2">
-                {getVisibilityIcon()} Visibility *
-              </label>
-              <select 
-                value={visibility} 
-                onChange={(e) => setVisibility(e.target.value as any)} 
-                className="w-full rounded-xl border border-emerald-mint/30 bg-brand-bg1 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-mint/20 focus:border-emerald-mint transition-all duration-200"
-              >
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-              </select>
-              <p className="text-xs text-emerald-mintSoft mt-1">
-                {getVisibilityDescription()}
-              </p>
-            </div>
-
-            {/* Max Players */}
-            <div>
-              <label className="block text-sm font-medium text-emerald-mint mb-2">
-                <Users className="w-4 h-4 inline mr-2" />
-                Max Players (optional)
-              </label>
-              <input 
-                inputMode="numeric" 
-                pattern="[0-9]*" 
-                value={maxPlayers} 
-                onChange={(e) => setMaxPlayers(e.target.value)} 
-                placeholder="e.g., 20"
-                className="w-full rounded-xl border border-emerald-mint/30 bg-brand-bg1 px-4 py-3 text-sm text-white placeholder-emerald-mintSoft focus:outline-none focus:ring-2 focus:ring-emerald-mint/20 focus:border-emerald-mint transition-all duration-200" 
-              />
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex gap-4 pt-4">
-              <button 
-                type="submit"
-                disabled={submitting || !clubId || !name.trim() || !startsAt || !venue.trim()} 
-                className="flex-1 btn-accent rounded-xl px-6 py-3 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                {submitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="spinner-modern h-4 w-4"></div>
-                    Creating...
-                  </div>
-                ) : (
-                  "Create Event"
-                )}
-              </button>
-              <Link 
-                href="/events"
-                className="btn-outline-modern rounded-xl px-6 py-3 text-sm font-medium"
-              >
-                Cancel
-              </Link>
-            </div>
-          </form>
+          </div>
         </div>
-      )}
+
+        {/* Event Type Selection */}
+        <div>
+          <label className="block text-sm font-medium text-emerald-mintSoft mb-3">
+            Event Type
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="eventType"
+                value="tournament"
+                checked={eventType === "tournament"}
+                onChange={(e) => setEventType(e.target.value as EventType)}
+                className="text-emerald-mint"
+              />
+              <span className="text-emerald-mintSoft">Tournament</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="eventType"
+                value="cash"
+                checked={eventType === "cash"}
+                onChange={(e) => setEventType(e.target.value as EventType)}
+                className="text-emerald-mint"
+              />
+              <span className="text-emerald-mintSoft">Cash</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Game Type */}
+        <div>
+          <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+            Game Type
+          </label>
+          <select
+            value={gameType}
+            onChange={(e) => setGameType(e.target.value as GameType)}
+            className="w-full bg-white/5 border border-emerald-mint/20 rounded-lg px-4 py-3 text-emerald-mintSoft focus:outline-none focus:border-emerald-mint/40"
+          >
+            <option value="TNLH">Texas No-Limit Hold'em</option>
+            <option value="PLO">Pot-Limit Omaha</option>
+            <option value="7CS">7 Card Stud</option>
+            <option value="Mixed">Mixed Games</option>
+          </select>
+        </div>
+
+        {/* Tournament Specific Fields */}
+        {eventType === "tournament" && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                Buyin
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("buyin", Math.max(0, formData.buyin - 10))}
+                  className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                >
+                  <Minus className="w-4 h-4 text-emerald-mint" />
+                </button>
+                <span className="text-emerald-mint font-semibold">${formData.buyin}</span>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("buyin", formData.buyin + 10)}
+                  className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-emerald-mint" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                  Number of Tables
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("numberOfTables", Math.max(1, formData.numberOfTables - 1))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Minus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                  <span className="text-emerald-mint font-semibold">{formData.numberOfTables}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("numberOfTables", formData.numberOfTables + 1)}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                  Players Per Table
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("playersPerTable", Math.max(2, formData.playersPerTable - 1))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Minus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                  <span className="text-emerald-mint font-semibold">{formData.playersPerTable}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("playersPerTable", Math.min(10, formData.playersPerTable + 1))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                  Starting Stack
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("startingStack", Math.max(1000, formData.startingStack - 5000))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Minus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                  <span className="text-emerald-mint font-semibold">{formData.startingStack.toLocaleString()}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("startingStack", formData.startingStack + 5000)}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                  Starting Blinds
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("startingBlinds", Math.max(25, formData.startingBlinds - 25))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Minus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                  <span className="text-emerald-mint font-semibold">{formData.startingBlinds}/{formData.startingBlinds * 2}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("startingBlinds", formData.startingBlinds + 25)}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                Time Per Level (minutes)
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("timePerLevel", Math.max(10, formData.timePerLevel - 5))}
+                  className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                >
+                  <Minus className="w-4 h-4 text-emerald-mint" />
+                </button>
+                <span className="text-emerald-mint font-semibold">{formData.timePerLevel} min</span>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("timePerLevel", formData.timePerLevel + 5)}
+                  className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-emerald-mint" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cash Game Specific Fields */}
+        {eventType === "cash" && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                Blinds
+              </label>
+              <input
+                type="text"
+                value={formData.blinds}
+                onChange={(e) => handleInputChange("blinds", e.target.value)}
+                placeholder="1/2"
+                className="w-full bg-white/5 border border-emerald-mint/20 rounded-lg px-4 py-3 text-emerald-mintSoft placeholder-emerald-mintSoft/50 focus:outline-none focus:border-emerald-mint/40"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                  Number of Tables
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("numberOfTables", Math.max(1, formData.numberOfTables - 1))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Minus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                  <span className="text-emerald-mint font-semibold">{formData.numberOfTables}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("numberOfTables", formData.numberOfTables + 1)}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+                  Players Per Table
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("playersPerTable", Math.max(2, formData.playersPerTable - 1))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Minus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                  <span className="text-emerald-mint font-semibold">{formData.playersPerTable}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("playersPerTable", Math.min(10, formData.playersPerTable + 1))}
+                    className="w-8 h-8 bg-emerald-mint/20 rounded-lg flex items-center justify-center hover:bg-emerald-mint/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-mint" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Remarks */}
+        <div>
+          <label className="block text-sm font-medium text-emerald-mintSoft mb-2">
+            Remarks
+          </label>
+          <textarea
+            value={formData.remarks}
+            onChange={(e) => handleInputChange("remarks", e.target.value)}
+            placeholder="Additional details about the event..."
+            rows={3}
+            className="w-full bg-white/5 border border-emerald-mint/20 rounded-lg px-4 py-3 text-emerald-mintSoft placeholder-emerald-mintSoft/50 focus:outline-none focus:border-emerald-mint/40 resize-none"
+          />
+        </div>
+
+        {/* Submit Button */}
+        <button
+          type="submit"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
+        >
+          Submit
+        </button>
+      </form>
     </div>
   );
 }

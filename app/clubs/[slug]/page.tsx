@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 import { ArrowLeft, Users, Calendar, MapPin, Eye, EyeOff, Lock, Plus, Edit, Crown } from "lucide-react";
@@ -15,13 +15,15 @@ type Club = {
   visibility: "public" | "private" | "hidden";
   description?: string;
   owner_id: string;
+  icon?: string;
   created_at: string;
   member_count: number;
   event_count: number;
   user_role: "owner" | "member" | "none";
 };
 
-export default function ClubPage({ params }: { params: { slug: string } }) {
+export default function ClubPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const [user, setUser] = useState<User | null>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,18 +41,20 @@ export default function ClubPage({ params }: { params: { slug: string } }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        fetchClub(params.slug, user.id);
+        fetchClub(slug, user.id);
       } else {
         // For public clubs, we can still show them without login
-        fetchClub(params.slug);
+        fetchClub(slug);
       }
     };
 
     getUser();
-  }, [supabase, params.slug]);
+  }, [supabase, slug]);
 
   const fetchClub = async (slug: string, userId?: string) => {
     try {
+      console.log('Fetching club with slug:', slug);
+      
       // Fetch club details with member and event counts
       const { data: clubData, error: clubError } = await supabase
         .from('clubs')
@@ -61,6 +65,9 @@ export default function ClubPage({ params }: { params: { slug: string } }) {
         `)
         .eq('slug', slug)
         .single();
+
+      console.log('Raw club data from database:', clubData);
+      console.log('Icon field value:', clubData?.icon);
 
       if (clubError) {
         console.error('Error fetching club:', clubError);
@@ -219,6 +226,13 @@ export default function ClubPage({ params }: { params: { slug: string } }) {
       </div>
     );
   }
+
+  if (!club) {
+    return null;
+  }
+
+  console.log('Rendering club page with club data:', club);
+  console.log('Club icon value:', club.icon);
 
   return (
     <div className="bg-app min-h-screen p-4">

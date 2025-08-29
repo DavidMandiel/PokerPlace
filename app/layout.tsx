@@ -25,19 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen text-white overflow-hidden`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased text-white bg-app`}>
         <Navigation />
-        <main className="h-[calc(80vh-5rem)] overflow-y-auto flex items-start justify-center">
-          <div className="w-full max-w-4xl pl-6 pr-10 pb-1">
-            {children}
-          </div>
+        <main className="min-h-screen pb-20">
+          {children}
         </main>
-        <footer id="disclaimer" className="border-t border-emerald/20 py-4 bg-brand-bg1/50">
-          <div className="max-w-6xl mx-auto pl-6 pr-10 text-xs text-emerald-mint/80">
-            <p className="mb-1">No gambling or real-money transactions. This app is for organizational and social purposes only.</p>
-            <p>© {new Date().getFullYear()} PokerPlace</p>
-          </div>
-        </footer>
       </body>
     </html>
   );

@@ -78,3 +78,4 @@ CREATE POLICY "Allow authenticated users to read audit logs" ON audit_logs
 -- Only allow the function to insert audit logs
 CREATE POLICY "Allow function to insert audit logs" ON audit_logs
   FOR INSERT WITH CHECK (true);
+

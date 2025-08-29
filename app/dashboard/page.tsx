@@ -2,31 +2,37 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { Plus, Users, Calendar, Edit, Crown, Trash2 } from "lucide-react";
+import { Search, MapPin, Info, Clock, Users, Calendar, Crown, CheckCircle, XCircle } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = SupabaseUser;
 
-type Club = {
+type Event = {
   id: string;
-  name: string;
-  slug: string;
-  city: string;
-  visibility: "public" | "private" | "hidden";
-  description?: string;
-  member_count: number;
-  event_count: number;
-  role: "owner" | "member";
+  title: string;
+  type: "tournament" | "cash";
+  gameType: string;
+  buyin: number;
+  date: string;
+  time: string;
+  availableSeats: number;
+  totalSeats: number;
+  image?: string;
+  host: {
+    name: string;
+    rating: number;
+    eventsCreated: number;
+  };
+  status: "upcoming" | "friends" | "other" | "registered";
 };
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [ownedClubs, setOwnedClubs] = useState<Club[]>([]);
-  const [joinedClubs, setJoinedClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingClubs, setLoadingClubs] = useState(true);
-  const [deletingClub, setDeletingClub] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [upcomingEvent, setUpcomingEvent] = useState<Event | null>(null);
+  const [friendsEvents, setFriendsEvents] = useState<Event[]>([]);
+  const [otherEvents, setOtherEvents] = useState<Event[]>([]);
+  const [registeredEvents, setRegisteredEvents] = useState<Event[]>([]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,9 +44,8 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        fetchUserClubs(user.id);
+        fetchEvents();
       } else {
-        // Redirect to auth if not logged in
         window.location.href = '/auth';
       }
       setLoading(false);
@@ -49,127 +54,115 @@ export default function DashboardPage() {
     getUser();
   }, [supabase]);
 
-  const fetchUserClubs = async (userId: string) => {
-    try {
-      // Fetch owned clubs
-      const { data: ownedData, error: ownedError } = await supabase
-        .from('clubs')
-        .select(`
-          id,
-          name,
-          slug,
-          city,
-          visibility,
-          description,
-          club_members(user_id),
-          events(id)
-        `)
-        .eq('owner_id', userId)
-        .order('created_at', { ascending: false });
+  const fetchEvents = async () => {
+    // Mock data for now - replace with actual API calls
+    const mockUpcomingEvent: Event = {
+      id: "1",
+      title: "SUNDAY TOURNAMENT",
+      type: "tournament",
+      gameType: "TNLH",
+      buyin: 100,
+      date: "24/2/2021",
+      time: "20:00",
+      availableSeats: 5,
+      totalSeats: 27,
+      host: {
+        name: "John Dow",
+        rating: 4,
+        eventsCreated: 212
+      },
+      status: "upcoming"
+    };
 
-      if (ownedError) {
-        console.error('Error fetching owned clubs:', ownedError);
-      }
-
-      // Fetch joined clubs (where user is a member but not owner)
-      const { data: joinedData, error: joinedError } = await supabase
-        .from('club_members')
-        .select(`
-          club_id,
-          clubs!inner(
-            id,
-            name,
-            slug,
-            city,
-            visibility,
-            description,
-            club_members(user_id),
-            events(id)
-          )
-        `)
-        .eq('user_id', userId)
-        .neq('clubs.owner_id', userId)
-        .order('joined_at', { ascending: false });
-
-      if (joinedError) {
-        console.error('Error fetching joined clubs:', joinedError);
-      }
-
-      // Transform owned clubs
-      const transformedOwnedClubs = ownedData?.map(club => ({
-        id: club.id,
-        name: club.name,
-        slug: club.slug,
-        city: club.city,
-        visibility: club.visibility,
-        description: club.description,
-        member_count: club.club_members?.length || 0,
-        event_count: club.events?.length || 0,
-        role: 'owner' as const,
-      })) || [];
-
-      // Transform joined clubs
-      const transformedJoinedClubs = joinedData?.map(item => {
-        const club = Array.isArray(item.clubs) ? item.clubs[0] : item.clubs;
-        return {
-          id: club.id,
-          name: club.name,
-          slug: club.slug,
-          city: club.city,
-          visibility: club.visibility,
-          description: club.description,
-          member_count: club.club_members?.length || 0,
-          event_count: club.events?.length || 0,
-          role: 'member' as const,
-        };
-      }) || [];
-
-      console.log('Raw owned data:', ownedData);
-      console.log('Transformed owned clubs:', transformedOwnedClubs);
-      console.log('Transformed joined clubs:', transformedJoinedClubs);
-      
-      setOwnedClubs(transformedOwnedClubs);
-      setJoinedClubs(transformedJoinedClubs);
-    } catch (error) {
-      console.error('Error fetching clubs:', error);
-    } finally {
-      setLoadingClubs(false);
-    }
-  };
-
-  const handleDeleteClub = async (clubId: string) => {
-    setDeletingClub(clubId);
-    try {
-      const response = await fetch(`/api/clubs/${clubId}/delete`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
+    const mockFriendsEvents: Event[] = [
+      {
+        id: "2",
+        title: "TNLH CASH",
+        type: "cash",
+        gameType: "TNLH",
+        buyin: 100,
+        date: "24/2/2021",
+        time: "19:00",
+        availableSeats: 3,
+        totalSeats: 9,
+        host: {
+          name: "Mike Smith",
+          rating: 5,
+          eventsCreated: 45
         },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete club');
+        status: "friends"
+      },
+      {
+        id: "3",
+        title: "OMAHA CASH",
+        type: "cash",
+        gameType: "PLO",
+        buyin: 200,
+        date: "25/2/2021",
+        time: "21:00",
+        availableSeats: 2,
+        totalSeats: 8,
+        host: {
+          name: "Sarah Johnson",
+          rating: 4,
+          eventsCreated: 78
+        },
+        status: "friends"
       }
+    ];
 
-      // Remove the club from the local state
-      setOwnedClubs(prev => prev.filter(club => club.id !== clubId));
-      console.log('Club deleted successfully');
-    } catch (error) {
-      console.error('Error deleting club:', error);
-      alert(error instanceof Error ? error.message : 'An unexpected error occurred while deleting the club.');
-    } finally {
-      setDeletingClub(null);
-      setShowDeleteConfirm(null);
-    }
+    const mockOtherEvents: Event[] = [
+      {
+        id: "4",
+        title: "MONDAY NIGHT NL",
+        type: "tournament",
+        gameType: "TNLH",
+        buyin: 150,
+        date: "26/2/2021",
+        time: "20:00",
+        availableSeats: 8,
+        totalSeats: 30,
+        host: {
+          name: "David Wilson",
+          rating: 3,
+          eventsCreated: 23
+        },
+        status: "other"
+      }
+    ];
+
+    const mockRegisteredEvents: Event[] = [
+      {
+        id: "5",
+        title: "WEEKEND SPECIAL",
+        type: "tournament",
+        gameType: "TNLH",
+        buyin: 300,
+        date: "28/2/2021",
+        time: "18:00",
+        availableSeats: 12,
+        totalSeats: 50,
+        host: {
+          name: "Lisa Brown",
+          rating: 5,
+          eventsCreated: 156
+        },
+        status: "registered"
+      }
+    ];
+
+    setUpcomingEvent(mockUpcomingEvent);
+    setFriendsEvents(mockFriendsEvents);
+    setOtherEvents(mockOtherEvents);
+    setRegisteredEvents(mockRegisteredEvents);
   };
 
   if (loading) {
     return (
-      <div className="bg-app flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="spinner-modern h-8 w-8 mx-auto mb-4"></div>
-          <p className="text-emerald-mintSoft">Loading dashboard...</p>
+          <p className="text-emerald-mintSoft">Loading...</p>
         </div>
       </div>
     );
@@ -184,383 +177,169 @@ export default function DashboardPage() {
                      user.email?.split('@')[0] || 
                      'User';
 
+  const EventCard = ({ event, showRegister = true }: { event: Event; showRegister?: boolean }) => (
+    <Link href={`/events/${event.id}`} className="block">
+      <div className="bg-white/5 rounded-xl p-4 min-w-[280px] border border-emerald-mint/10 hover:bg-white/10 transition-colors cursor-pointer">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1">
+            <h3 className="font-semibold text-glow text-sm">{event.title}</h3>
+            <p className="text-emerald-mintSoft text-xs">{event.gameType}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-emerald-mintSoft">BUYIN: ${event.buyin}</span>
+          </div>
+        </div>
+        
+        <div className="space-y-1 mb-3">
+          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
+            <span>AVAILABLE SEATS: {event.availableSeats}/{event.totalSeats}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
+            <span>DATE: {event.date}</span>
+          </div>
+        </div>
+
+        {showRegister && (
+          <div className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors text-center">
+            REGISTER
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+
+  const RegisteredEventCard = ({ event }: { event: Event }) => (
+    <Link href={`/events/${event.id}`} className="block">
+      <div className="bg-white/5 rounded-xl p-4 min-w-[280px] border border-emerald-mint/10 hover:bg-white/10 transition-colors cursor-pointer">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1">
+            <h3 className="font-semibold text-glow text-sm">{event.title}</h3>
+            <p className="text-emerald-mintSoft text-xs">{event.gameType}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-emerald-mintSoft">BUYIN: ${event.buyin}</span>
+          </div>
+        </div>
+        
+        <div className="space-y-1 mb-3">
+          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
+            <span>AVAILABLE SEATS: {event.availableSeats}/{event.totalSeats}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
+            <span>DATE: {event.date}</span>
+          </div>
+        </div>
+
+        <div className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors text-center">
+          UNREGISTER
+        </div>
+      </div>
+    </Link>
+  );
+
   return (
-    <div className="bg-app space-y-8 p-4">
+    <div className="min-h-screen bg-app p-4">
       {/* Header */}
-      <div className="flex items-center justify-between animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold text-gradient">Welcome back, {displayName}!</h1>
-          <p className="text-emerald-mintSoft mt-1">
-            Manage your clubs or join new ones
-          </p>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Link
-          href="/events"
-          className="group card-emerald p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="icon-modern">
-              <Calendar className="w-6 h-6" />
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-mint/20 rounded-full flex items-center justify-center">
+              <span className="text-emerald-mint font-semibold text-sm">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
             </div>
             <div>
-              <h3 className="font-semibold text-glow">Find Events</h3>
-              <p className="text-emerald-mintSoft">
-                Discover poker events near you
-              </p>
+              <h1 className="text-lg font-semibold text-glow">Hi {displayName}</h1>
+              <p className="text-emerald-mintSoft text-sm">Your Up-Coming Event</p>
             </div>
           </div>
-        </Link>
-
-        <Link
-          href="/clubs"
-          className="group card-teal p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="icon-glass">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-glow">Browse Clubs</h3>
-              <p className="text-teal-soft">
-                Find clubs to join
-              </p>
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-mintSoft w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-white/5 border border-emerald-mint/20 rounded-lg pl-10 pr-4 py-2 text-sm text-emerald-mintSoft placeholder-emerald-mintSoft/50 focus:outline-none focus:border-emerald-mint/40"
+            />
           </div>
-        </Link>
-
-        <Link
-          href="/friends"
-          className="group card-olive p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="icon-gradient">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-glow">See Your Friends</h3>
-              <p className="text-olive-limeSoft">
-                Connect with poker buddies
-              </p>
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* My Clubs Section */}
-      <div className="animate-slide-up">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gradient">My Clubs</h2>
-          <Link
-            href="/clubs/new"
-            className="btn-accent rounded-xl px-4 py-2"
-          >
-            <Plus className="w-4 h-4" />
-            Create Club
-          </Link>
         </div>
 
-        {loadingClubs ? (
-          <div className="text-center py-12">
-            <div className="spinner-modern h-8 w-8 mx-auto mb-4"></div>
-            <p className="text-emerald-mintSoft">Loading your clubs...</p>
-          </div>
-        ) : ownedClubs.length === 0 && joinedClubs.length === 0 ? (
-          <div className="text-center py-12 card-emerald">
-            <Users className="w-12 h-12 text-emerald-mint mx-auto mb-4 animate-bounce-subtle" />
-            <h3 className="text-lg font-semibold mb-2 text-gradient">No clubs yet</h3>
-            <p className="text-emerald-mintSoft mb-4">
-              Create a club to organize events or join existing clubs to play
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/clubs/new"
-                className="btn-accent rounded-xl px-4 py-2"
-              >
-                <Plus className="w-4 h-4" />
-                Create Your First Club
-              </Link>
-              <Link
-                href="/clubs"
-                className="btn-outline-modern rounded-xl px-4 py-2"
-              >
-                <Users className="w-4 h-4" />
-                Browse Clubs
-              </Link>
+        {/* Upcoming Event Card */}
+        {upcomingEvent && (
+          <div className="bg-gradient-to-r from-emerald-dark/50 to-teal-dark/50 rounded-xl p-4 border border-emerald-mint/20 mb-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-emerald-mint/20 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-emerald-mint" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-glow text-lg">{upcomingEvent.title}</h2>
+                  <p className="text-red-400 text-sm font-medium">START IN: 2 DAYS</p>
+                </div>
+              </div>
+              <CheckCircle className="w-6 h-6 text-green-400" />
             </div>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Owned Clubs */}
-            {ownedClubs.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-brand-red" />
-                  <span className="text-gradient">Clubs You Manage</span>
-                </h3>
-                <div className="space-y-4">
-                  {ownedClubs.map((club) => (
-                    <div
-                      key={club.id}
-                      className="card-emerald p-6 relative"
-                    >
-                                             {/* Club Logo */}
-                       <div className="absolute top-4 left-4 w-16 h-16">
-                         {club.icon ? (
-                           <img 
-                             src={club.icon} 
-                             alt={`${club.name} icon`}
-                             className="w-full h-full object-cover rounded-sm border border-emerald-mint/50"
-                           />
-                         ) : (
-                           <div className="w-full h-full bg-emerald-mint/30 rounded-sm border border-emerald-mint/50 flex items-center justify-center">
-                             <span className="text-2xl font-bold text-emerald-mint">
-                               {club.name.charAt(0).toUpperCase()}
-                             </span>
-                           </div>
-                         )}
-                       </div>
-
-                                             <div className="flex items-start justify-between mb-4 pl-20">
-                                                 <div>
-                           <h3 className="font-semibold text-4xl text-glow">{club.name}</h3>
-                          <p className="text-emerald-mintSoft">
-                            {club.city} • {club.visibility}
-                          </p>
-                        </div>
-                                                 <div className="flex items-center gap-2">
-                           <Link
-                             href={`/clubs/${club.slug}/edit`}
-                             className="p-4 rounded-xl hover:bg-emerald-dark transition-colors"
-                             title="Edit Club"
-                           >
-                             <Edit className="w-8 h-8" />
-                           </Link>
-                           <button
-                             onClick={() => setShowDeleteConfirm(club.id)}
-                             className="p-4 rounded-xl hover:bg-brand-red/20 transition-colors text-brand-red"
-                             title="Delete Club"
-                           >
-                             <Trash2 className="w-8 h-8" />
-                           </button>
-                         </div>
-                      </div>
-
-                                             {club.description && (
-                         <p className="text-emerald-mintSoft mb-4 line-clamp-2 pl-20">
-                           {club.description}
-                         </p>
-                       )}
-
-                       <div className="flex items-center gap-4 text-sm text-emerald-mintSoft mb-4 pl-20">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {club.member_count} members
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {club.event_count} events
-                        </div>
-                      </div>
-
-                                             <div className="flex gap-2 pl-20">
-                        <Link
-                          href={`/clubs/${club.slug}`}
-                          className="flex-1 text-center btn-emerald rounded-xl"
-                        >
-                          View Club
-                        </Link>
-                        <Link
-                          href={`/clubs/${club.slug}/events/new`}
-                          className="flex-1 text-center btn-outline-modern rounded-xl"
-                        >
-                          Add Event
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-1">
+                <p className="text-emerald-mintSoft text-xs">{upcomingEvent.gameType}</p>
+                <p className="text-emerald-mintSoft text-xs">BUYIN: ${upcomingEvent.buyin}</p>
+                <p className="text-emerald-mintSoft text-xs">AVAILABLE SEATS: {upcomingEvent.availableSeats}/{upcomingEvent.totalSeats}</p>
+                <p className="text-emerald-mintSoft text-xs">DATE: {upcomingEvent.date}</p>
               </div>
-            )}
-
-            {/* Joined Clubs */}
-            {joinedClubs.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-teal-accent" />
-                  <span className="text-gradient">Clubs You've Joined</span>
-                </h3>
-                <div className="space-y-4">
-                  {joinedClubs.map((club) => (
-                    <div
-                      key={club.id}
-                      className="card-teal p-6 relative"
-                    >
-                                             {/* Club Logo */}
-                       <div className="absolute top-4 left-4 w-16 h-16">
-                         {club.icon ? (
-                           <img 
-                             src={club.icon} 
-                             alt={`${club.name} icon`}
-                             className="w-full h-full object-cover rounded-sm border border-teal-accent/50"
-                           />
-                         ) : (
-                           <div className="w-full h-full bg-teal-accent/30 rounded-sm border border-teal-accent/50 flex items-center justify-center">
-                             <span className="text-2xl font-bold text-teal-accent">
-                               {club.name.charAt(0).toUpperCase()}
-                             </span>
-                           </div>
-                         )}
-                       </div>
-
-                                                                    <div className="mb-4 pl-20">
-                         <h3 className="font-semibold text-4xl text-glow">{club.name}</h3>
-                        <p className="text-teal-soft">
-                          {club.city} • {club.visibility}
-                        </p>
-                      </div>
-
-                                             {club.description && (
-                         <p className="text-teal-soft mb-4 line-clamp-2 pl-20">
-                           {club.description}
-                         </p>
-                       )}
-
-                       <div className="flex items-center gap-4 text-sm text-teal-soft mb-4 pl-20">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {club.member_count} members
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {club.event_count} events
-                        </div>
-                      </div>
-
-                                             <div className="pl-20">
-                        <Link
-                          href={`/clubs/${club.slug}`}
-                          className="w-full text-center btn-teal rounded-xl"
-                        >
-                          View Club
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
+            
+            <div className="flex items-center justify-end gap-2">
+              <MapPin className="w-4 h-4 text-emerald-mintSoft" />
+              <Info className="w-4 h-4 text-emerald-mintSoft" />
+            </div>
           </div>
         )}
       </div>
 
-      {/* Upcoming Events Section */}
-      <div className="animate-slide-up">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gradient">Upcoming Events</h2>
-          <Link
-            href="/events"
-            className="text-emerald-mintSoft hover:text-emerald-mint hover:underline underline-offset-4 transition-colors"
-          >
-            View all events
+      {/* Friends Events */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-glow">Friends Events</h2>
+          <Link href="/events/friends" className="text-emerald-mint text-sm hover:underline">
+            more
           </Link>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Placeholder Event Cards */}
-          <div className="card-emerald p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-sm text-glow">Tel Aviv Poker Club</h3>
-                <p className="text-xs text-emerald-mintSoft">Tournament</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-medium">Dec 25</p>
-                <p className="text-xs text-emerald-mintSoft">7:00 PM</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
-              <span>12 players registered</span>
-              <span>8 seats available</span>
-            </div>
-          </div>
-
-          <div className="card-teal p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-sm text-glow">Jerusalem Card Club</h3>
-                <p className="text-xs text-teal-soft">Cash Game</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-medium">Dec 26</p>
-                <p className="text-xs text-teal-soft">8:00 PM</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-teal-soft">
-              <span>8 players registered</span>
-              <span>4 seats available</span>
-            </div>
-          </div>
-
-          <div className="card-olive p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-sm text-glow">Haifa Poker Society</h3>
-                <p className="text-xs text-olive-limeSoft">Sit & Go</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-medium">Dec 27</p>
-                <p className="text-xs text-olive-limeSoft">6:30 PM</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-olive-limeSoft">
-              <span>6 players registered</span>
-              <span>6 seats available</span>
-            </div>
-          </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {friendsEvents.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))}
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="card-emerald p-6 max-w-md w-full">
-            <div className="text-center">
-              <Trash2 className="w-12 h-12 text-brand-red mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2 text-gradient">Delete Club</h3>
-              <p className="text-emerald-mintSoft mb-6">
-                Are you sure you want to delete this club? This action cannot be undone and will remove all members and events.
-              </p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => handleDeleteClub(showDeleteConfirm)}
-                  disabled={deletingClub === showDeleteConfirm}
-                  className="btn-accent rounded-xl px-6 py-2 disabled:opacity-60"
-                >
-                  {deletingClub === showDeleteConfirm ? (
-                    <div className="flex items-center gap-2">
-                      <div className="spinner-modern h-4 w-4"></div>
-                      Deleting...
-                    </div>
-                  ) : (
-                    'Delete Club'
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(null)}
-                  disabled={deletingClub === showDeleteConfirm}
-                  className="btn-outline-modern rounded-xl px-6 py-2"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
+      {/* Other Events */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-glow">Other Events</h2>
+          <Link href="/events" className="text-emerald-mint text-sm hover:underline">
+            more
+          </Link>
         </div>
-      )}
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {otherEvents.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))}
+        </div>
+      </div>
+
+      {/* Registered Events */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-glow">Registered Events</h2>
+          <Link href="/events/registered" className="text-emerald-mint text-sm hover:underline">
+            more
+          </Link>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {registeredEvents.map((event) => (
+            <RegisteredEventCard key={event.id} event={event} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

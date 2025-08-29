@@ -322,3 +322,4 @@ export default function NewEventPage({ params }: { params: { slug: string } }) {
     </div>
   );
 }
+

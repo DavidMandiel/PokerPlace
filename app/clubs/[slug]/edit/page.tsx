@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -16,9 +16,11 @@ type Club = {
   visibility: "public" | "private" | "hidden";
   description?: string;
   owner_id: string;
+  icon?: string;
 };
 
-export default function EditClubPage({ params }: { params: { slug: string } }) {
+export default function EditClubPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const [user, setUser] = useState<User | null>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,23 +47,28 @@ export default function EditClubPage({ params }: { params: { slug: string } }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        fetchClub(params.slug, user.id);
+        fetchClub(slug, user.id);
       } else {
         router.push('/auth');
       }
     };
 
     getUser();
-  }, [supabase, params.slug, router]);
+  }, [supabase, slug, router]);
 
   const fetchClub = async (slug: string, userId: string) => {
     try {
+      console.log('Fetching club with slug:', slug, 'and userId:', userId);
+      
       const { data: clubData, error: clubError } = await supabase
         .from('clubs')
         .select('*')
         .eq('slug', slug)
         .eq('owner_id', userId)
         .single();
+
+      console.log('Club fetch result:', { clubData, clubError });
+      console.log('Club icon field:', clubData?.icon);
 
       if (clubError) {
         console.error('Error fetching club:', clubError);
@@ -77,14 +84,14 @@ export default function EditClubPage({ params }: { params: { slug: string } }) {
       }
 
       setClub(clubData);
-             setFormData({
-         name: clubData.name,
-         city: clubData.city,
-         description: clubData.description || "",
-         visibility: clubData.visibility,
-         icon: clubData.icon || ""
-       });
-       setIconPreview(clubData.icon || null);
+      setFormData({
+        name: clubData.name,
+        city: clubData.city,
+        description: clubData.description || "",
+        visibility: clubData.visibility,
+        icon: clubData.icon || ""
+      });
+      setIconPreview(clubData.icon || null);
     } catch (error) {
       console.error('Error fetching club:', error);
       setError('Failed to load club details');
@@ -106,24 +113,38 @@ export default function EditClubPage({ params }: { params: { slug: string } }) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-             const { error: updateError } = await supabase
-         .from('clubs')
-         .update({
-           name: formData.name,
-           slug: newSlug,
-           city: formData.city,
-           description: formData.description || null,
-           visibility: formData.visibility,
-           icon: formData.icon || null,
-           updated_at: new Date().toISOString()
-         })
-         .eq('id', club.id);
+      // Prepare update data
+      const updateData = {
+        name: formData.name,
+        slug: newSlug,
+        city: formData.city,
+        description: formData.description || null,
+        visibility: formData.visibility,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add icon if available
+      if (formData.icon) {
+        (updateData as any).icon = formData.icon;
+      }
+
+      console.log('Updating club with data:', updateData);
+
+      const { data: updateResult, error: updateError } = await supabase
+        .from('clubs')
+        .update(updateData)
+        .eq('id', club.id)
+        .select();
 
       if (updateError) {
         console.error('Error updating club:', updateError);
-        setError('Failed to update club. Please try again.');
+        console.error('Error details:', updateError.message, updateError.details, updateError.hint);
+        setError(`Failed to update club: ${updateError.message}`);
         return;
       }
+
+      console.log('Club updated successfully:', updateResult);
+      console.log('Icon data that was saved:', formData.icon);
 
       // Redirect to the updated club page
       router.push(`/clubs/${newSlug}`);
@@ -168,8 +189,7 @@ export default function EditClubPage({ params }: { params: { slug: string } }) {
       };
       reader.readAsDataURL(file);
 
-      // For now, we'll store the image as a data URL directly in the database
-      // This is a temporary solution until the storage bucket is properly configured
+      // Convert to data URL
       const dataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target?.result as string);
@@ -181,31 +201,7 @@ export default function EditClubPage({ params }: { params: { slug: string } }) {
         icon: dataUrl
       }));
 
-      // Alternative: Try to upload to storage if bucket exists
-      try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${club.id}-${Date.now()}.${fileExt}`;
-        const filePath = `club-icons/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('club-assets')
-          .upload(filePath, file);
-
-        if (!uploadError) {
-          // If storage upload succeeds, use the public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('club-assets')
-            .getPublicUrl(filePath);
-
-          setFormData(prev => ({
-            ...prev,
-            icon: publicUrl
-          }));
-        }
-      } catch (storageError) {
-        console.log('Storage bucket not configured, using data URL instead');
-        // Continue with data URL approach
-      }
+      console.log('Icon uploaded successfully, data URL length:', dataUrl.length);
 
     } catch (error) {
       console.error('Error uploading icon:', error);
@@ -274,79 +270,79 @@ export default function EditClubPage({ params }: { params: { slug: string } }) {
           </div>
         </div>
 
-                 {/* Edit Form */}
-         <form onSubmit={handleSubmit} className="space-y-6">
-           <div className="card-emerald p-6">
-             {/* Club Icon */}
-             <div className="mb-6">
-               <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                 <Image className="w-4 h-4" />
-                 Club Icon
-               </label>
-               <div className="flex items-center gap-4">
-                 {/* Current Icon Display */}
-                 <div className="w-16 h-16 rounded-xl border-2 border-emerald-mint/30 flex items-center justify-center bg-emerald-dark/50">
-                   {iconPreview ? (
-                     <img 
-                       src={iconPreview} 
-                       alt="Club icon" 
-                       className="w-full h-full object-cover rounded-lg"
-                     />
-                   ) : formData.icon ? (
-                     <img 
-                       src={formData.icon} 
-                       alt="Club icon" 
-                       className="w-full h-full object-cover rounded-lg"
-                     />
-                   ) : (
-                     <span className="text-2xl font-bold text-emerald-mint">
-                       {club?.name.charAt(0).toUpperCase()}
-                     </span>
-                   )}
-                 </div>
-                 
-                 {/* Upload Controls */}
-                 <div className="flex flex-col gap-2">
-                   <label className="cursor-pointer">
-                     <input
-                       type="file"
-                       accept="image/*"
-                       onChange={handleIconUpload}
-                       className="hidden"
-                       disabled={uploadingIcon}
-                     />
-                     <div className="flex items-center gap-2 px-3 py-2 bg-emerald-dark/50 border border-emerald-mint/30 rounded-lg hover:bg-emerald-dark transition-colors disabled:opacity-60">
-                       {uploadingIcon ? (
-                         <div className="spinner-modern h-4 w-4"></div>
-                       ) : (
-                         <Upload className="w-4 h-4" />
-                       )}
-                       <span className="text-sm">
-                         {uploadingIcon ? 'Uploading...' : 'Upload Icon'}
-                       </span>
-                     </div>
-                   </label>
-                   
-                   {(iconPreview || formData.icon) && (
-                     <button
-                       type="button"
-                       onClick={removeIcon}
-                       className="flex items-center gap-2 px-3 py-2 bg-brand-red/20 border border-brand-red/30 rounded-lg hover:bg-brand-red/30 transition-colors text-brand-red text-sm"
-                     >
-                       Remove Icon
-                     </button>
-                   )}
-                 </div>
-               </div>
-                               <p className="text-xs text-emerald-mintSoft mt-2">
-                  Upload a square image (max 2MB). Recommended size: 256x256px. 
-                  <br />
-                  <span className="text-yellow-400">Note: Icons are stored as data URLs for now. Storage bucket setup coming soon!</span>
-                </p>
-             </div>
+        {/* Edit Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="card-emerald p-6">
+            {/* Club Icon */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                <Image className="w-4 h-4" />
+                Club Icon
+              </label>
+              <div className="flex items-center gap-4">
+                {/* Current Icon Display */}
+                <div className="w-16 h-16 rounded-xl border-2 border-emerald-mint/30 flex items-center justify-center bg-emerald-dark/50">
+                  {iconPreview ? (
+                    <img 
+                      src={iconPreview} 
+                      alt="Club icon" 
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : formData.icon ? (
+                    <img 
+                      src={formData.icon} 
+                      alt="Club icon" 
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <span className="text-2xl font-bold text-emerald-mint">
+                      {club?.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Upload Controls */}
+                <div className="flex flex-col gap-2">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleIconUpload}
+                      className="hidden"
+                      disabled={uploadingIcon}
+                    />
+                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-dark/50 border border-emerald-mint/30 rounded-lg hover:bg-emerald-dark transition-colors disabled:opacity-60">
+                      {uploadingIcon ? (
+                        <div className="spinner-modern h-4 w-4"></div>
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      <span className="text-sm">
+                        {uploadingIcon ? 'Uploading...' : 'Upload Icon'}
+                      </span>
+                    </div>
+                  </label>
+                  
+                  {(iconPreview || formData.icon) && (
+                    <button
+                      type="button"
+                      onClick={removeIcon}
+                      className="flex items-center gap-2 px-3 py-2 bg-brand-red/20 border border-brand-red/30 rounded-lg hover:bg-brand-red/30 transition-colors text-brand-red text-sm"
+                    >
+                      Remove Icon
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-emerald-mintSoft mt-2">
+                Upload a square image (max 2MB). Recommended size: 256x256px. 
+                <br />
+                <span className="text-yellow-400">Note: Icons are stored as data URLs for now. Storage bucket setup coming soon!</span>
+              </p>
+            </div>
 
-             {/* Club Name */}
-             <div className="mb-6">
+            {/* Club Name */}
+            <div className="mb-6">
               <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 Club Name
