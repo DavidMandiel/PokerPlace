@@ -31,8 +31,12 @@ CREATE TABLE public.events (
   starts_at TIMESTAMP WITH TIME ZONE NOT NULL,
   venue TEXT NOT NULL,
   city TEXT,
-  visibility TEXT CHECK (visibility IN ('public', 'private')) DEFAULT 'public',
+  visibility TEXT CHECK (visibility IN ('public', 'private', 'secret')) DEFAULT 'public',
+  event_type TEXT CHECK (event_type IN ('tournament', 'cash')) NOT NULL,
+  game_type TEXT CHECK (game_type IN ('TNLH', 'PLO', '7CS', 'Mixed')) NOT NULL,
+  buyin INTEGER,
   max_players INTEGER,
+  current_players INTEGER DEFAULT 0,
   club_id UUID REFERENCES public.clubs(id) ON DELETE CASCADE,
   created_by UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -92,6 +96,16 @@ CREATE POLICY "Authenticated users can create clubs" ON public.clubs
 -- RLS Policies for events
 CREATE POLICY "Anyone can view public events" ON public.events
   FOR SELECT USING (visibility = 'public');
+
+CREATE POLICY "Club members can view private events" ON public.events
+  FOR SELECT USING (
+    visibility = 'private' AND 
+    EXISTS (
+      SELECT 1 FROM public.club_members 
+      WHERE club_id = events.club_id 
+      AND user_id = auth.uid()
+    )
+  );
 
 CREATE POLICY "Event creators can view their events" ON public.events
   FOR SELECT USING (created_by = auth.uid());

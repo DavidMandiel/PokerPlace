@@ -6,102 +6,118 @@
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Custom background image */
+/* Clean mobile-first background */
 body {
-  background-image: url('/background.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
 }
 
-/* App background helper */
+/* App background helper - clean white/gray theme */
 .bg-app {
-  @apply bg-brand-gradient min-h-screen text-white;
+  @apply bg-gray-50 min-h-screen text-gray-900;
 }
 
-/* Card presets */
-.card-emerald {
-  @apply bg-emerald-gradient text-white rounded-2xl shadow-glow;
-}
-.card-teal {
-  @apply bg-teal-gradient text-white rounded-2xl shadow-glow;
-}
-.card-olive {
-  @apply bg-olive-gradient text-white rounded-2xl shadow-glow;
+/* Mobile-first container */
+.container-mobile {
+  @apply max-w-sm mx-auto px-4;
 }
 
-/* CTA buttons tied to their cards */
-.btn-emerald { @apply bg-emerald hover:bg-emerald-dark transition-all duration-200 ease-soft; }
-.btn-teal    { @apply bg-teal hover:bg-teal-dark transition-all duration-200 ease-soft; }
-.btn-olive   { @apply bg-olive hover:bg-olive-dark transition-all duration-200 ease-soft; }
+@media (min-width: 640px) {
+  .container-mobile {
+    @apply max-w-2xl;
+  }
+}
 
-/* Accent utility to echo the logo red for important CTAs */
-.btn-accent  { @apply bg-brand-red hover:brightness-110 text-white transition-all duration-200 ease-soft; }
+@media (min-width: 1024px) {
+  .container-mobile {
+    @apply max-w-4xl;
+  }
+}
 
-/* Modern Card Themes with new color scheme */
+/* Clean card components */
+.card-clean {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200;
+}
+
+.card-event {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+  @apply hover:shadow-md transition-shadow duration-200;
+}
+
+/* Clean button styles */
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg;
+  @apply transition-colors duration-200 ease-soft;
+}
+
+.btn-secondary {
+  @apply bg-white border border-blue-600 text-blue-600 hover:bg-blue-50;
+  @apply font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-soft;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg;
+  @apply transition-colors duration-200 ease-soft;
+}
+
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg;
+  @apply transition-colors duration-200 ease-soft;
+}
+
+/* Clean mobile-first components */
 @layer components {
-  .card-modern {
-    @apply relative overflow-hidden rounded-2xl border border-emerald/20 bg-emerald-gradient backdrop-blur-sm;
-    @apply hover:bg-emerald-dark transition-all duration-300 ease-soft;
-    @apply hover:shadow-glow hover:scale-[1.02] hover:-translate-y-1;
+  .event-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+    @apply hover:shadow-md transition-shadow duration-200;
   }
 
-  .card-glass {
-    @apply relative overflow-hidden rounded-2xl border border-teal/20 bg-teal-gradient backdrop-blur-md;
-    @apply hover:bg-teal-dark transition-all duration-300 ease-soft;
-    @apply hover:shadow-glow;
+  .event-card-header {
+    @apply relative h-32 bg-gradient-to-r from-blue-500 to-purple-600;
+    @apply flex items-end p-4;
   }
 
-  .card-gradient {
-    @apply relative overflow-hidden rounded-2xl border-0 bg-olive-gradient;
-    @apply hover:bg-olive-dark transition-all duration-300 ease-soft;
-    @apply hover:shadow-glow hover:scale-[1.02] hover:-translate-y-1;
+  .event-card-body {
+    @apply p-4 space-y-3;
   }
 
-  .icon-modern {
-    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
-    @apply bg-emerald-mint/20 backdrop-blur-sm;
-    @apply group-hover:bg-emerald-mint/30 transition-all duration-300 ease-soft;
-    @apply shadow-glow;
+  .event-card-footer {
+    @apply p-4 pt-0 space-y-2;
   }
 
-  .icon-glass {
-    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
-    @apply bg-teal-accent/20 backdrop-blur-sm;
-    @apply group-hover:bg-teal-accent/30 transition-all duration-300 ease-soft;
-    @apply border border-teal-accent/20;
+  .privacy-badge {
+    @apply absolute top-3 left-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full;
+    @apply flex items-center gap-1;
   }
 
-  .icon-gradient {
-    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
-    @apply bg-olive-lime/20 backdrop-blur-sm;
-    @apply group-hover:bg-olive-lime/30 transition-all duration-300 ease-soft;
-    @apply border border-olive-lime/20;
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2;
   }
 
-  /* Button Enhancements */
-  .btn-modern {
-    @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium;
-    @apply bg-emerald hover:bg-emerald-dark text-white;
-    @apply transition-all duration-300 ease-soft hover:shadow-glow;
-    @apply hover:scale-105;
+  .progress-fill {
+    @apply bg-blue-600 h-2 rounded-full transition-all duration-300;
   }
 
-  .btn-outline-modern {
-    @apply inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium;
-    @apply border-emerald-mint/30 text-emerald-mint;
-    @apply hover:bg-emerald-mint/10 transition-all duration-300 ease-soft;
-    @apply hover:scale-105;
+  /* Input styles */
+  .input-clean {
+    @apply w-full bg-white border border-gray-300 rounded-lg px-4 py-3;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply placeholder-gray-400 text-gray-900;
   }
 
-  /* Text Enhancements */
-  .text-gradient {
-    @apply bg-gradient-to-r from-emerald-mint to-teal-accent bg-clip-text text-transparent;
+  /* Navigation styles */
+  .nav-bottom {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200;
+    @apply flex items-center justify-around h-16 px-4;
   }
 
-  .text-glow {
-    @apply text-white drop-shadow-sm;
+  .nav-item {
+    @apply flex flex-col items-center gap-1 text-gray-600 hover:text-blue-600;
+    @apply transition-colors duration-200;
+  }
+
+  .nav-item.active {
+    @apply text-blue-600;
   }
 
   /* Animation Classes */
@@ -113,14 +129,9 @@ body {
     animation: slideUp 0.6s var(--ease-soft) both;
   }
 
-  .animate-bounce-subtle {
-    animation: bounceSubtle 2s infinite;
-  }
-
-  /* Loading Spinner Enhancement */
-  .spinner-modern {
-    @apply animate-spin rounded-full border-2 border-emerald/30;
-    @apply border-t-emerald-mint;
+  /* Loading Spinner */
+  .spinner-clean {
+    @apply animate-spin rounded-full border-2 border-gray-300 border-t-blue-600;
   }
 }
 
@@ -158,27 +169,27 @@ body {
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-brand-bg3;
+  @apply bg-gray-100;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-emerald/50 rounded-full;
+  @apply bg-gray-300 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-emerald/70;
+  @apply bg-gray-400;
 }
 
 /* Selection Styling */
 ::selection {
-  @apply bg-emerald-mint/20;
+  @apply bg-blue-100;
 }
 
 /* Focus Styles */
-.focus-modern:focus {
-  @apply outline-none ring-2 ring-emerald-mint/20 ring-offset-2 ring-offset-brand-bg1;
+.focus-clean:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
 }

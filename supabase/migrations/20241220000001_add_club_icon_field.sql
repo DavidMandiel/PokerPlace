@@ -39,3 +39,4 @@ ALTER TABLE clubs ADD COLUMN IF NOT EXISTS icon TEXT;
 --     (storage.foldername(name))[1] = 'club-icons'
 --   );
 
+

@@ -2,29 +2,11 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { Search, MapPin, Info, Clock, Users, Calendar, Crown, CheckCircle, XCircle } from "lucide-react";
+import { Search, Calendar, CheckCircle } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import EventCard, { Event } from "../components/EventCard";
 
 type User = SupabaseUser;
-
-type Event = {
-  id: string;
-  title: string;
-  type: "tournament" | "cash";
-  gameType: string;
-  buyin: number;
-  date: string;
-  time: string;
-  availableSeats: number;
-  totalSeats: number;
-  image?: string;
-  host: {
-    name: string;
-    rating: number;
-    eventsCreated: number;
-  };
-  status: "upcoming" | "friends" | "other" | "registered";
-};
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -58,96 +40,91 @@ export default function DashboardPage() {
     // Mock data for now - replace with actual API calls
     const mockUpcomingEvent: Event = {
       id: "1",
-      title: "SUNDAY TOURNAMENT",
+      title: "High Roller Tournament",
       type: "tournament",
       gameType: "TNLH",
-      buyin: 100,
-      date: "24/2/2021",
-      time: "20:00",
-      availableSeats: 5,
-      totalSeats: 27,
+      buyin: 500,
+      date: "Jan 7",
+      time: "5:00 PM",
+      location: "456 Casino Blvd, Las Vegas, NV 89101",
+      availableSeats: 8,
+      totalSeats: 20,
+      privacy: "private",
       host: {
         name: "John Dow",
         rating: 4,
         eventsCreated: 212
       },
-      status: "upcoming"
+      userStatus: "upcoming",
+      isClubMember: true
     };
 
     const mockFriendsEvents: Event[] = [
       {
         id: "2",
-        title: "TNLH CASH",
-        type: "cash",
+        title: "Monday Night NL Tournament",
+        type: "tournament",
         gameType: "TNLH",
         buyin: 100,
-        date: "24/2/2021",
-        time: "19:00",
-        availableSeats: 3,
-        totalSeats: 9,
+        date: "27/2/2021",
+        time: "20:00",
+        location: "6391 Elgin St. Celina, Delaware 10299",
+        availableSeats: 6,
+        totalSeats: 27,
+        privacy: "private",
         host: {
-          name: "Mike Smith",
-          rating: 5,
-          eventsCreated: 45
-        },
-        status: "friends"
-      },
-      {
-        id: "3",
-        title: "OMAHA CASH",
-        type: "cash",
-        gameType: "PLO",
-        buyin: 200,
-        date: "25/2/2021",
-        time: "21:00",
-        availableSeats: 2,
-        totalSeats: 8,
-        host: {
-          name: "Sarah Johnson",
+          name: "John Dow",
           rating: 4,
-          eventsCreated: 78
+          eventsCreated: 212
         },
-        status: "friends"
+        userStatus: "friends",
+        isClubMember: true
       }
     ];
 
     const mockOtherEvents: Event[] = [
       {
         id: "4",
-        title: "MONDAY NIGHT NL",
+        title: "Sunday Main Tournament",
         type: "tournament",
         gameType: "TNLH",
-        buyin: 150,
-        date: "26/2/2021",
+        buyin: 100,
+        date: "27/2/2021",
         time: "20:00",
-        availableSeats: 8,
-        totalSeats: 30,
+        location: "6391 Elgin St. Celina, Delaware 10299",
+        availableSeats: 6,
+        totalSeats: 27,
+        privacy: "public",
         host: {
-          name: "David Wilson",
-          rating: 3,
-          eventsCreated: 23
+          name: "John Dow",
+          rating: 4,
+          eventsCreated: 212
         },
-        status: "other"
+        userStatus: "other",
+        isClubMember: false
       }
     ];
 
     const mockRegisteredEvents: Event[] = [
       {
         id: "5",
-        title: "WEEKEND SPECIAL",
-        type: "tournament",
-        gameType: "TNLH",
-        buyin: 300,
-        date: "28/2/2021",
-        time: "18:00",
-        availableSeats: 12,
-        totalSeats: 50,
+        title: "Monday Omaha Cash",
+        type: "cash",
+        gameType: "PLO",
+        buyin: 200,
+        date: "25/2/2021",
+        time: "21:00",
+        location: "Tel Aviv, Israel",
+        availableSeats: 2,
+        totalSeats: 8,
+        privacy: "private",
         host: {
-          name: "Lisa Brown",
-          rating: 5,
-          eventsCreated: 156
+          name: "Event Host",
+          rating: 3,
+          eventsCreated: 212
         },
-        status: "registered"
+        userStatus: "registered",
+        isClubMember: false
       }
     ];
 
@@ -159,10 +136,10 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="spinner-modern h-8 w-8 mx-auto mb-4"></div>
-          <p className="text-emerald-mintSoft">Loading...</p>
+          <div className="spinner-clean h-8 w-8 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -177,167 +154,102 @@ export default function DashboardPage() {
                      user.email?.split('@')[0] || 
                      'User';
 
-  const EventCard = ({ event, showRegister = true }: { event: Event; showRegister?: boolean }) => (
-    <Link href={`/events/${event.id}`} className="block">
-      <div className="bg-white/5 rounded-xl p-4 min-w-[280px] border border-emerald-mint/10 hover:bg-white/10 transition-colors cursor-pointer">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h3 className="font-semibold text-glow text-sm">{event.title}</h3>
-            <p className="text-emerald-mintSoft text-xs">{event.gameType}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-emerald-mintSoft">BUYIN: ${event.buyin}</span>
-          </div>
-        </div>
-        
-        <div className="space-y-1 mb-3">
-          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
-            <span>AVAILABLE SEATS: {event.availableSeats}/{event.totalSeats}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
-            <span>DATE: {event.date}</span>
-          </div>
-        </div>
-
-        {showRegister && (
-          <div className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors text-center">
-            REGISTER
-          </div>
-        )}
-      </div>
-    </Link>
-  );
-
-  const RegisteredEventCard = ({ event }: { event: Event }) => (
-    <Link href={`/events/${event.id}`} className="block">
-      <div className="bg-white/5 rounded-xl p-4 min-w-[280px] border border-emerald-mint/10 hover:bg-white/10 transition-colors cursor-pointer">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h3 className="font-semibold text-glow text-sm">{event.title}</h3>
-            <p className="text-emerald-mintSoft text-xs">{event.gameType}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-emerald-mintSoft">BUYIN: ${event.buyin}</span>
-          </div>
-        </div>
-        
-        <div className="space-y-1 mb-3">
-          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
-            <span>AVAILABLE SEATS: {event.availableSeats}/{event.totalSeats}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-emerald-mintSoft">
-            <span>DATE: {event.date}</span>
-          </div>
-        </div>
-
-        <div className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors text-center">
-          UNREGISTER
-        </div>
-      </div>
-    </Link>
-  );
-
   return (
-    <div className="min-h-screen bg-app p-4">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-mint/20 rounded-full flex items-center justify-center">
-              <span className="text-emerald-mint font-semibold text-sm">
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-glow">Hi {displayName}</h1>
-              <p className="text-emerald-mintSoft text-sm">Your Up-Coming Event</p>
-            </div>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-mintSoft w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="bg-white/5 border border-emerald-mint/20 rounded-lg pl-10 pr-4 py-2 text-sm text-emerald-mintSoft placeholder-emerald-mintSoft/50 focus:outline-none focus:border-emerald-mint/40"
-            />
-          </div>
-        </div>
-
-        {/* Upcoming Event Card */}
-        {upcomingEvent && (
-          <div className="bg-gradient-to-r from-emerald-dark/50 to-teal-dark/50 rounded-xl p-4 border border-emerald-mint/20 mb-6">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-emerald-mint/20 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-emerald-mint" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-glow text-lg">{upcomingEvent.title}</h2>
-                  <p className="text-red-400 text-sm font-medium">START IN: 2 DAYS</p>
-                </div>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="container-mobile">
+        {/* Header */}
+        <div className="mb-6 pt-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-sm">
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
               </div>
-              <CheckCircle className="w-6 h-6 text-green-400" />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="space-y-1">
-                <p className="text-emerald-mintSoft text-xs">{upcomingEvent.gameType}</p>
-                <p className="text-emerald-mintSoft text-xs">BUYIN: ${upcomingEvent.buyin}</p>
-                <p className="text-emerald-mintSoft text-xs">AVAILABLE SEATS: {upcomingEvent.availableSeats}/{upcomingEvent.totalSeats}</p>
-                <p className="text-emerald-mintSoft text-xs">DATE: {upcomingEvent.date}</p>
+              <div>
+                <h1 className="text-lg font-semibold text-gray-900">Hi {displayName}</h1>
+                <p className="text-gray-600 text-sm">Find Events, Browse Clubs, See Your Friends</p>
               </div>
             </div>
-            
-            <div className="flex items-center justify-end gap-2">
-              <MapPin className="w-4 h-4 text-emerald-mintSoft" />
-              <Info className="w-4 h-4 text-emerald-mintSoft" />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="input-clean pl-10 pr-4 py-2 text-sm"
+              />
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Friends Events */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-glow">Friends Events</h2>
-          <Link href="/events/friends" className="text-emerald-mint text-sm hover:underline">
-            more
-          </Link>
+          {/* Upcoming Event Card */}
+          {upcomingEvent && (
+            <div className="card-clean p-4 mb-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-gray-900 text-lg">{upcomingEvent.title}</h2>
+                    <p className="text-red-500 text-sm font-medium">START IN: 2 DAYS</p>
+                  </div>
+                </div>
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              </div>
+              
+              <div className="space-y-2 mb-4">
+                <p className="text-gray-600 text-sm">{upcomingEvent.gameType}</p>
+                <p className="text-gray-600 text-sm">BUYIN: ${upcomingEvent.buyin}</p>
+                <p className="text-gray-600 text-sm">AVAILABLE SEATS: {upcomingEvent.availableSeats}/{upcomingEvent.totalSeats}</p>
+                <p className="text-gray-600 text-sm">DATE: {upcomingEvent.date}</p>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {friendsEvents.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      </div>
 
-      {/* Other Events */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-glow">Other Events</h2>
-          <Link href="/events" className="text-emerald-mint text-sm hover:underline">
-            more
-          </Link>
+        {/* Friends Events */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Friends Events</h2>
+            <Link href="/events/friends" className="text-blue-600 text-sm hover:underline">
+              more
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {friendsEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {otherEvents.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      </div>
 
-      {/* Registered Events */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-glow">Registered Events</h2>
-          <Link href="/events/registered" className="text-emerald-mint text-sm hover:underline">
-            more
-          </Link>
+        {/* Other Events */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Other Events</h2>
+            <Link href="/events" className="text-blue-600 text-sm hover:underline">
+              more
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {otherEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {registeredEvents.map((event) => (
-            <RegisteredEventCard key={event.id} event={event} />
-          ))}
+
+        {/* Registered Events */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Registered Events</h2>
+            <Link href="/events/registered" className="text-blue-600 text-sm hover:underline">
+              more
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {registeredEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

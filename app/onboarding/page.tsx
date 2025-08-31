@@ -1,114 +1,122 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, SkipForward } from "lucide-react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
-
-type User = SupabaseUser;
+import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 
 export default function OnboardingPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const router = useRouter();
+  
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
   useEffect(() => {
-    const getUser = async () => {
+    const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
-        // If user is already logged in, redirect to dashboard
-        window.location.href = '/dashboard';
+        // If user is logged in, go to dashboard
+        router.push('/dashboard');
       }
-      setLoading(false);
     };
 
-    getUser();
-  }, [supabase]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="spinner-modern h-8 w-8 mx-auto mb-4"></div>
-          <p className="text-emerald-mintSoft">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+    checkUser();
+  }, [supabase, router]);
 
   return (
-    <div className="min-h-screen bg-app flex flex-col">
-      {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">P</span>
+          </div>
+          <span className="text-xl font-bold text-gray-900">PokerPlace</span>
+        </div>
+        <Link href="/auth" className="text-blue-600 text-sm font-medium">
+          Sign in
+        </Link>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <div className="max-w-md mx-auto">
-          {/* Logo and Welcome */}
-          <div className="mb-12">
-            <Image 
-              src="/icon-app.png" 
-              alt="PokerPlace" 
-              width={80} 
-              height={80} 
-              className="mx-auto mb-6"
-            />
-            <h1 className="text-3xl font-bold text-gradient mb-4">
-              Welcome to PokerPlace
-            </h1>
-            <p className="text-emerald-mintSoft text-lg leading-relaxed">
-              Your Home Game Event Manager and Social Poker Network
-            </p>
+          {/* Hero Image */}
+          <div className="mb-8">
+            <div className="w-64 h-64 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+              <div className="text-white text-6xl">🃏</div>
+            </div>
           </div>
 
-          {/* Onboarding Options */}
-          <div className="space-y-4 mb-8">
-            <Link 
-              href="/auth/signup"
-              className="flex items-center justify-between w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
-            >
-              <span>Create New Account</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-            
-            <Link 
-              href="/auth"
-              className="flex items-center justify-between w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
-            >
-              <span>Sign In</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+          {/* Title */}
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            Welcome To PokerPlace
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+            Your Home Game Event Manager and A Social Poker Network
+          </p>
+
+          {/* Social Media Icons */}
+          <div className="flex justify-center gap-4 mb-8">
+            <a href="#" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+              <Facebook className="w-5 h-5 text-gray-600" />
+            </a>
+            <a href="#" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+              <Instagram className="w-5 h-5 text-gray-600" />
+            </a>
+            <a href="#" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+              <Twitter className="w-5 h-5 text-gray-600" />
+            </a>
+            <a href="#" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+              <Youtube className="w-5 h-5 text-gray-600" />
+            </a>
           </div>
 
-          {/* Skip Option */}
-          <div className="text-center">
-            <Link 
-              href="/dashboard"
-              className="inline-flex items-center gap-2 text-emerald-mintSoft hover:text-emerald-mint transition-colors"
-            >
-              <SkipForward className="w-4 h-4" />
-              <span>Skip for now</span>
+          {/* Register Button */}
+          <Link href="/auth" className="block w-full btn-primary text-center mb-4">
+            Register
+          </Link>
+
+          {/* Login Link */}
+          <p className="text-gray-600">
+            Already registered?{" "}
+            <Link href="/auth" className="text-blue-600 hover:underline">
+              Login
             </Link>
-            <p className="text-emerald-mintSoft text-xs mt-2">
-              Explore with limited features
-            </p>
-          </div>
+          </p>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-emerald-mint/20 py-6 px-6">
-        <div className="max-w-md mx-auto text-center">
-          <p className="text-emerald-mintSoft text-xs mb-2">
-            No gambling or real-money transactions. This app is for organizational and social purposes only.
-          </p>
-          <p className="text-emerald-mintSoft text-xs">
-            © 2025 PokerPlace
-          </p>
+      {/* Bottom Navigation Preview */}
+      <div className="bg-white border-t border-gray-200 p-4">
+        <div className="flex items-center justify-around max-w-sm mx-auto">
+          <div className="flex flex-col items-center gap-1 text-blue-600">
+            <div className="w-5 h-5 bg-blue-600 rounded"></div>
+            <span className="text-xs">Home</span>
+          </div>
+          <div className="flex flex-col items-center gap-1 text-gray-400">
+            <div className="w-5 h-5 bg-gray-300 rounded"></div>
+            <span className="text-xs">Create</span>
+          </div>
+          <div className="flex flex-col items-center gap-1 text-gray-400">
+            <div className="w-5 h-5 bg-gray-300 rounded"></div>
+            <span className="text-xs">Events</span>
+          </div>
+          <div className="flex flex-col items-center gap-1 text-gray-400">
+            <div className="w-5 h-5 bg-gray-300 rounded"></div>
+            <span className="text-xs">Clubs</span>
+          </div>
+          <div className="flex flex-col items-center gap-1 text-gray-400">
+            <div className="w-5 h-5 bg-gray-300 rounded"></div>
+            <span className="text-xs">Profile</span>
+          </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
