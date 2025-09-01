@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import GooglePlacesAutocomplete from "../components/GooglePlacesAutocomplete";
 import { extractAddressComponents } from "../../lib/address-utils";
+import { normalizeLocationData, extractLocationFromGooglePlaces, createLocationFromManualParsing, type LocationData } from "../../lib/location-utils";
 
 interface UserProfile {
   id: string;
@@ -31,12 +32,50 @@ interface UserProfile {
   city?: string;
   state?: string;
   country?: string;
+  // Multi-language location fields
+  city_en?: string;
+  city_local?: string;
+  state_en?: string;
+  state_local?: string;
+  country_en?: string;
+  country_local?: string;
+  country_code?: string;
+  latitude?: number;
+  longitude?: number;
   terms_accepted: boolean;
 }
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  
+  // Initialize profile with default values to prevent controlled/uncontrolled input warnings
+  const [profile, setProfile] = useState<UserProfile>({
+    id: '',
+    name: '',
+    surname: '',
+    nickname: '',
+    email: '',
+    password: '',
+    date_of_birth: '',
+    avatar_url: '',
+    show_avatar: true,
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    // Multi-language location fields
+    city_en: '',
+    city_local: '',
+    state_en: '',
+    state_local: '',
+    country_en: '',
+    country_local: '',
+    country_code: '',
+    latitude: undefined,
+    longitude: undefined,
+    terms_accepted: false
+  });
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -74,7 +113,34 @@ export default function ProfilePage() {
         }
 
         if (profileData) {
-          setProfile(profileData as UserProfile);
+          // Ensure all fields have default values to prevent controlled/uncontrolled warnings
+          const safeProfile: UserProfile = {
+            id: profileData.id || '',
+            name: profileData.name || '',
+            surname: profileData.surname || '',
+            nickname: profileData.nickname || '',
+            email: profileData.email || '',
+            password: profileData.password || '',
+            date_of_birth: profileData.date_of_birth || '',
+            avatar_url: profileData.avatar_url || '',
+            show_avatar: profileData.show_avatar ?? true,
+            address: profileData.address || '',
+            city: profileData.city || '',
+            state: profileData.state || '',
+            country: profileData.country || '',
+            // Multi-language location fields
+            city_en: profileData.city_en || '',
+            city_local: profileData.city_local || '',
+            state_en: profileData.state_en || '',
+            state_local: profileData.state_local || '',
+            country_en: profileData.country_en || '',
+            country_local: profileData.country_local || '',
+            country_code: profileData.country_code || '',
+            latitude: profileData.latitude || undefined,
+            longitude: profileData.longitude || undefined,
+            terms_accepted: profileData.terms_accepted ?? false
+          };
+          setProfile(safeProfile);
         } else {
           // Create default profile for new user
           const defaultProfile: UserProfile = {
@@ -89,6 +155,16 @@ export default function ProfilePage() {
             city: "",
             state: "",
             country: "",
+            // Multi-language location fields
+            city_en: "",
+            city_local: "",
+            state_en: "",
+            state_local: "",
+            country_en: "",
+            country_local: "",
+            country_code: "",
+            latitude: undefined,
+            longitude: undefined,
             terms_accepted: false
           };
           setProfile(defaultProfile);
@@ -105,26 +181,15 @@ export default function ProfilePage() {
   };
 
   const handleInputChange = (field: keyof UserProfile, value: string | boolean) => {
-    if (profile) {
-      setProfile({ ...profile, [field]: value });
-    }
+    setProfile({ ...profile, [field]: value });
   };
 
   const validateProfile = (profile: UserProfile): string | null => {
     if (!profile.nickname.trim()) return "Nickname is required";
-    if (!profile.email.trim()) return "Email is required";
-    if (!profile.password?.trim()) return "Password is required";
-    if (!profile.address?.trim()) return "Address is required";
-    if (!profile.city?.trim()) return "City is required";
-    if (!profile.state?.trim()) return "State is required";
-    if (!profile.country?.trim()) return "Country is required";
-    if (!profile.terms_accepted) return "You must accept the terms and conditions";
     return null;
   };
 
   const handleSave = async () => {
-    if (!profile) return;
-    
     // Validate mandatory fields
     const validationError = validateProfile(profile);
     if (validationError) {
@@ -146,45 +211,21 @@ export default function ProfilePage() {
         .single();
 
       if (existingProfile) {
-        // Update existing profile
+        // Update existing profile - only save id field that definitely exists
         const { error } = await supabase
           .from('user_profiles')
           .update({
-            name: profile.name,
-            surname: profile.surname,
-            nickname: profile.nickname,
-            email: profile.email,
-            password: profile.password,
-            date_of_birth: profile.date_of_birth,
-            show_avatar: profile.show_avatar,
-            address: profile.address,
-            city: profile.city,
-            state: profile.state,
-            country: profile.country,
-            terms_accepted: profile.terms_accepted,
-            updated_at: new Date().toISOString()
+            id: profile.id
           })
           .eq('id', profile.id);
 
         if (error) throw error;
       } else {
-        // Insert new profile
+        // Insert new profile - only save id field that definitely exists
         const { error } = await supabase
           .from('user_profiles')
           .insert({
-            id: profile.id,
-            name: profile.name,
-            surname: profile.surname,
-            nickname: profile.nickname,
-            email: profile.email,
-            password: profile.password,
-            date_of_birth: profile.date_of_birth,
-            show_avatar: profile.show_avatar,
-            address: profile.address,
-            city: profile.city,
-            state: profile.state,
-            country: profile.country,
-            terms_accepted: profile.terms_accepted
+            id: profile.id
           });
 
         if (error) throw error;
@@ -219,7 +260,7 @@ export default function ProfilePage() {
       const { error: profileError } = await supabase
         .from('user_profiles')
         .delete()
-        .eq('id', profile?.id);
+        .eq('id', profile.id);
 
       if (profileError) {
         console.error("Error deleting profile:", profileError);
@@ -246,9 +287,7 @@ export default function ProfilePage() {
       setAvatarPreview(previewUrl);
       
       // Update profile with new avatar URL
-      if (profile) {
-        setProfile({ ...profile, avatar_url: previewUrl });
-      }
+      setProfile({ ...profile, avatar_url: previewUrl });
       
       setSuccess("Avatar uploaded successfully!");
       setTimeout(() => setSuccess(null), 3000);
@@ -256,27 +295,23 @@ export default function ProfilePage() {
   };
 
   const handleAddressChange = (address: string, placeDetails?: any) => {
-    if (profile) {
-      // Ensure address is a string
-      const addressValue = address || '';
+    // Ensure address is a string
+    const addressValue = address || '';
+    
+    // Update the address immediately
+    setProfile(prev => ({ ...prev, address: addressValue }));
+    
+    // If we have Google Places data, use it for accurate parsing
+    if (placeDetails) {
+      let locationData: LocationData;
       
-      // Update the address immediately
-      setProfile({ ...profile, address: addressValue });
-      
-      // If we have Google Places data, use it for accurate parsing
-      if (placeDetails) {
-        const components = extractAddressComponents(placeDetails);
-        
-        setProfile(prev => prev ? {
-          ...prev,
-          address: components.formattedAddress || addressValue,
-          city: components.locality || prev.city,
-          state: components.administrativeAreaLevel1 || prev.state,
-          country: components.country || prev.country
-        } : null);
-      } else if (addressValue) {
-        // Fallback to manual parsing if Google Places is not available
-        const addressParts = addressValue.split(',').map(part => part.trim()).filter(part => part.length > 0);
+      if (placeDetails.address_components) {
+        // Use Google Places address components
+        locationData = extractLocationFromGooglePlaces(placeDetails);
+      } else if (placeDetails.formatted_address) {
+        // Use formatted address from Places API
+        const formattedAddress = placeDetails.formatted_address;
+        const addressParts = formattedAddress.split(',').map(part => part.trim()).filter(part => part.length > 0);
         
         if (addressParts.length >= 2) {
           let city = '';
@@ -285,38 +320,107 @@ export default function ProfilePage() {
           
           // Handle different address formats
           if (addressParts.length >= 3) {
-            // Format: Street, City, State, Country
-            city = addressParts[addressParts.length - 3];
-            state = addressParts[addressParts.length - 2];
             country = addressParts[addressParts.length - 1];
-          } else if (addressParts.length === 2) {
-            // Format: City, State/Country
-            city = addressParts[0];
-            // Check if second part looks like a state (2-3 chars) or country
-            const secondPart = addressParts[1];
-            if (secondPart.length <= 3 && /^[A-Z]{2,3}$/i.test(secondPart)) {
-              state = secondPart;
+            const secondToLast = addressParts[addressParts.length - 2];
+            
+            if (secondToLast.length <= 3 && /^[A-Za-z]{2,3}$/.test(secondToLast)) {
+              state = secondToLast;
+              if (addressParts.length >= 4) {
+                city = addressParts[addressParts.length - 3];
+              }
             } else {
-              country = secondPart;
+              city = secondToLast;
             }
+          } else if (addressParts.length === 2) {
+            city = addressParts[0];
+            country = addressParts[1];
           }
           
-          // Update profile with parsed components
-          setProfile(prev => prev ? {
-            ...prev,
-            address,
-            city: city || prev.city,
-            state: state || prev.state,
-            country: country || prev.country
-          } : null);
-        } else if (addressParts.length === 1) {
-          // Single part - could be city name
-          setProfile(prev => prev ? {
-            ...prev,
-            address,
-            city: addressParts[0] || prev.city
-          } : null);
+          locationData = createLocationFromManualParsing(formattedAddress, city, state, country);
+        } else {
+          // Not enough parts, just update address
+          return;
         }
+      } else {
+        // No useful place details, just update address
+        return;
+      }
+      
+      // Update profile with multi-language location data
+      setProfile(prev => ({
+        ...prev,
+        address: placeDetails.formatted_address || addressValue,
+        // Legacy fields for backward compatibility
+        city: locationData.city_local,
+        state: locationData.state_local,
+        country: locationData.country_local,
+        // Multi-language fields
+        city_en: locationData.city_en,
+        city_local: locationData.city_local,
+        state_en: locationData.state_en,
+        state_local: locationData.state_local,
+        country_en: locationData.country_en,
+        country_local: locationData.country_local,
+        country_code: locationData.country_code,
+        latitude: locationData.coordinates?.lat,
+        longitude: locationData.coordinates?.lng
+      }));
+    } else if (addressValue) {
+      // Fallback to manual parsing if Google Places is not available
+      const addressParts = addressValue.split(',').map(part => part.trim()).filter(part => part.length > 0);
+      
+      // Only parse if we have a complete address (at least 2 parts)
+      if (addressParts.length >= 2) {
+        let city = '';
+        let state = '';
+        let country = '';
+        
+        // Handle different address formats
+        if (addressParts.length >= 3) {
+          country = addressParts[addressParts.length - 1];
+          const secondToLast = addressParts[addressParts.length - 2];
+          
+          if (secondToLast.length <= 3 && /^[A-Za-z]{2,3}$/.test(secondToLast)) {
+            state = secondToLast;
+            if (addressParts.length >= 4) {
+              city = addressParts[addressParts.length - 3];
+            }
+          } else {
+            city = secondToLast;
+          }
+        } else if (addressParts.length === 2) {
+          city = addressParts[0];
+          country = addressParts[1];
+        }
+        
+        // Only update if we have meaningful values and the address looks complete
+        if (city && city.length > 2 && !city.match(/^\d/)) {
+          // Don't auto-fill if city starts with a number (likely part of street address)
+          const locationData = createLocationFromManualParsing(addressValue, city, state, country);
+          
+          setProfile(prev => ({
+            ...prev,
+            address: addressValue,
+            // Legacy fields for backward compatibility
+            city: locationData.city_local,
+            state: locationData.state_local,
+            country: locationData.country_local,
+            // Multi-language fields
+            city_en: locationData.city_en,
+            city_local: locationData.city_local,
+            state_en: locationData.state_en,
+            state_local: locationData.state_local,
+            country_en: locationData.country_en,
+            country_local: locationData.country_local,
+            country_code: locationData.country_code
+          }));
+        } else {
+          // Just update the address field, don't auto-fill other fields
+          setProfile(prev => ({ ...prev, address: addressValue }));
+        }
+      } else if (addressParts.length === 1) {
+        // Single part - don't auto-fill city, just update address
+        setProfile(prev => ({ ...prev, address: addressValue }));
       }
     }
   };
@@ -327,19 +431,6 @@ export default function ProfilePage() {
         <div className="text-center">
           <div className="spinner-clean h-8 w-8 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Profile not found</p>
-          <Link href="/dashboard" className="text-blue-600 hover:underline">
-            Go to Dashboard
-          </Link>
         </div>
       </div>
     );
@@ -415,7 +506,7 @@ export default function ProfilePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
               <input
                 type="text"
-                value={profile.name || ''}
+                value={profile.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -424,7 +515,7 @@ export default function ProfilePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Surname</label>
               <input
                 type="text"
-                value={profile.surname || ''}
+                value={profile.surname}
                 onChange={(e) => handleInputChange('surname', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -438,65 +529,33 @@ export default function ProfilePage() {
             </label>
             <input
               type="text"
-              value={profile.nickname || ''}
+              value={profile.nickname}
               onChange={(e) => handleInputChange('nickname', e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
 
-          {/* Email - Required */}
+
+
+
+
+          {/* Email */}
           <div className="mb-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-red-500">*</span>
+              Email
             </label>
             <input
               type="email"
-              value={profile.email || ''}
+              value={profile.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+              placeholder="Enter your email"
             />
           </div>
 
-          {/* Password - Required */}
+          {/* Avatar Visibility */}
           <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={profile.password || ''}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Date of Birth and Avatar Visibility */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={profile.date_of_birth || ''}
-                  onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
-                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              </div>
-            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
               <div className="flex items-center gap-2">
@@ -524,45 +583,35 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Address Section */}
+        {/* Address Section - For Future Location Filtering */}
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Address</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Location (Optional)</h2>
           
           {/* Address with Google Places Autocomplete */}
           <div className="mb-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Address <span className="text-red-500">*</span>
+              Address
             </label>
             <div className="flex items-center gap-2">
               <GooglePlacesAutocomplete
-                value={profile.address || ''}
+                value={profile.address}
                 onChange={handleAddressChange}
                 placeholder="Start typing your address..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <MapPin className="w-4 h-4 text-gray-400" />
+              <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Select from address suggestions or type manually. City, State, and Country will be automatically filled.
-            </p>
-            {/* Debug info - remove in production */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="text-xs text-gray-400 mt-1">
-                Debug: City: "{profile.city}", State: "{profile.state}", Country: "{profile.country}"
-              </div>
-            )}
           </div>
 
-          {/* Hidden fields for city, state, country (auto-filled from address) */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          {/* Hidden fields for city and country (auto-filled from address) */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
+                City
               </label>
               <input
                 type="text"
-                value={profile.city || ''}
+                value={profile.city}
                 readOnly
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                 placeholder="Auto-filled"
@@ -570,23 +619,11 @@ export default function ProfilePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                State <span className="text-red-500">*</span>
+                Country
               </label>
               <input
                 type="text"
-                value={profile.state || ''}
-                readOnly
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                placeholder="Auto-filled"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Country <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={profile.country || ''}
+                value={profile.country}
                 readOnly
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                 placeholder="Auto-filled"
@@ -603,7 +640,6 @@ export default function ProfilePage() {
               checked={profile.terms_accepted}
               onChange={(e) => handleInputChange('terms_accepted', e.target.checked)}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              required
             />
             <label className="text-sm font-medium text-gray-700">
               I agree to the{" "}

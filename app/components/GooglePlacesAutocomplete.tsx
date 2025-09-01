@@ -17,10 +17,12 @@ export default function GooglePlacesAutocomplete({
   className = "",
   required = false
 }: GooglePlacesAutocompleteProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useNewAPI, setUseNewAPI] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{description: string, place_id: string}>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     const initializeGooglePlaces = async () => {
@@ -28,7 +30,8 @@ export default function GooglePlacesAutocomplete({
         const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || "YOUR_GOOGLE_PLACES_API_KEY";
         
         if (apiKey === "YOUR_GOOGLE_PLACES_API_KEY") {
-          console.warn("Google Places API key not configured. Using fallback address parsing.");
+          console.error("❌ Google Places API key not configured!");
+          setError("API key not configured. Check console for setup instructions.");
           setIsLoaded(false);
           return;
         }
@@ -36,15 +39,17 @@ export default function GooglePlacesAutocomplete({
         const loader = new Loader({
           apiKey: apiKey,
           version: "weekly",
-          libraries: ["places"]
+          libraries: ["places"],
+          load: "async"
         });
 
         await loader.load();
+        console.log("✅ Google Maps API loaded successfully");
         setIsLoaded(true);
         setError(null);
       } catch (err) {
-        console.error("Error loading Google Places API:", err);
-        setError("Failed to load address autocomplete");
+        console.error("❌ Error loading Google Places API:", err);
+        setError("Failed to load Google Maps API. Check console for troubleshooting steps.");
         setIsLoaded(false);
       }
     };
@@ -52,133 +57,130 @@ export default function GooglePlacesAutocomplete({
     initializeGooglePlaces();
   }, []);
 
-  useEffect(() => {
-    if (isLoaded && containerRef.current) {
+  // Handle input changes and get suggestions
+  const handleInputChange = async (inputValue: string) => {
+    onChange(inputValue);
+    
+    if (isLoaded && inputValue.length > 2) {
       try {
-        // Use the new PlaceAutocompleteElement API
-        if (typeof google !== 'undefined' && google.maps && google.maps.places && google.maps.places.PlaceAutocompleteElement) {
-          const autocompleteElement = new google.maps.places.PlaceAutocompleteElement();
-          
-          // Configure the element
-          autocompleteElement.setAttribute('placeholder', placeholder);
-          autocompleteElement.setAttribute('class', className);
-          if (required) autocompleteElement.setAttribute('required', 'true');
-          
-          // Apply comprehensive styling
-          autocompleteElement.style.cssText = `
-            width: 100% !important;
-            padding: 8px 12px !important;
-            border: 1px solid #d1d5db !important;
-            border-radius: 8px !important;
-            background-color: white !important;
-            color: #374151 !important;
-            font-size: 14px !important;
-            outline: none !important;
-            box-sizing: border-box !important;
-            display: block !important;
-            font-family: inherit !important;
-          `;
-          
-          // Set initial value
-          if (value) {
-            autocompleteElement.value = value;
+        const service = new google.maps.places.AutocompleteService();
+        const request = {
+          input: inputValue,
+          types: ['address'],
+          language: 'en', // Get English results for consistency
+          region: 'us' // Bias results to US, but will work globally
+        };
+        
+        service.getPlacePredictions(request, (predictions, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+            // Store both the description and place_id for later use
+            const suggestionList = predictions.map(prediction => ({
+              description: prediction.description,
+              place_id: prediction.place_id
+            }));
+            setSuggestions(suggestionList);
+            setShowSuggestions(true);
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
           }
-          
-          // Listen for place selection with proper event handling
-          autocompleteElement.addEventListener('gmp-placeselect', (event: any) => {
-            console.log('New API place select event:', { event });
-            const place = event.place;
-            if (place) {
-              // Handle different property names for formatted address
-              const formattedAddress = place.formattedAddress || place.formatted_address || place.displayName || '';
-              if (formattedAddress) {
-                onChange(formattedAddress, place);
-              }
-            }
-          });
-          
-          // Listen for input changes with proper event handling
-          autocompleteElement.addEventListener('input', (event: any) => {
-            const inputValue = event.target?.value || event.detail?.value || '';
-            console.log('New API input event:', { inputValue, event });
-            onChange(inputValue);
-          });
-          
-          // Also listen for other possible events
-          autocompleteElement.addEventListener('change', (event: any) => {
-            const inputValue = event.target?.value || event.detail?.value || '';
-            console.log('New API change event:', { inputValue, event });
-            onChange(inputValue);
-          });
-          
-          // Clear container and add the new element
-          containerRef.current.innerHTML = '';
-          containerRef.current.appendChild(autocompleteElement);
-          
-          setUseNewAPI(true);
-          console.log("✅ Using new PlaceAutocompleteElement API");
-        } else {
-          // Fallback: create a simple input without autocomplete
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = placeholder;
-          input.className = className;
-          input.value = value || '';
-          if (required) input.required = true;
-          input.style.cssText = `
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background-color: white;
-            color: #374151;
-            font-size: 14px;
-            outline: none;
-            box-sizing: border-box;
-          `;
-          
-          input.addEventListener('input', (e: any) => {
-            console.log('Fallback input event:', { value: e.target.value });
-            onChange(e.target.value);
-          });
-          
-          containerRef.current.innerHTML = '';
-          containerRef.current.appendChild(input);
-          
-          setUseNewAPI(false);
-          console.log("⚠️ Using fallback input (no autocomplete)");
-        }
+        });
       } catch (err) {
-        console.error("Error initializing autocomplete:", err);
-        setError("Failed to initialize address autocomplete");
+        console.error("Error getting place predictions:", err);
       }
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
-  }, [isLoaded, onChange, placeholder, className, required, value]);
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionClick = (suggestion: {description: string, place_id: string}) => {
+    onChange(suggestion.description);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    
+    // Try to get place details using fetch to Places API (if we have the API key)
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (apiKey) {
+      // Use Places API to get place details with comprehensive fields
+      fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${suggestion.place_id}&fields=formatted_address,address_components,geometry,place_id&language=en&key=${apiKey}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'OK' && data.result) {
+            onChange(suggestion.description, data.result);
+          } else {
+            // Fallback to just the description
+            onChange(suggestion.description, { formatted_address: suggestion.description });
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching place details:', error);
+          // Fallback to just the description
+          onChange(suggestion.description, { formatted_address: suggestion.description });
+        });
+    } else {
+      // Fallback to just the description
+      onChange(suggestion.description, { formatted_address: suggestion.description });
+    }
+  };
+
+  // Handle input focus/blur
+  const handleFocus = () => {
+    if (suggestions.length > 0) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleBlur = () => {
+    // Delay hiding suggestions to allow clicking on them
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 200);
+  };
 
   return (
-    <div className="relative">
-      <div 
-        ref={containerRef} 
-        className="[&>gmp-place-autocomplete-element]:w-full [&>gmp-place-autocomplete-element]:p-2 [&>gmp-place-autocomplete-element]:border [&>gmp-place-autocomplete-element]:border-gray-300 [&>gmp-place-autocomplete-element]:rounded-lg [&>gmp-place-autocomplete-element]:bg-white [&>gmp-place-autocomplete-element]:text-gray-900 [&>gmp-place-autocomplete-element]:focus:ring-2 [&>gmp-place-autocomplete-element]:focus:ring-blue-500 [&>gmp-place-autocomplete-element]:focus:border-transparent"
+    <div className="relative w-full">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => handleInputChange(e.target.value)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className={`w-full ${className}`}
+        required={required}
       />
+      
+      {/* Suggestions dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion.description}
+            </div>
+          ))}
+        </div>
+      )}
+      
       {error && (
-        <p className="text-xs text-red-500 mt-1">{error}</p>
+        <div className="text-xs text-red-500 mt-1 p-2 bg-red-50 border border-red-200 rounded">
+          <p className="font-medium">{error}</p>
+          <p className="mt-1">Check the console for detailed setup instructions.</p>
+        </div>
       )}
       {!isLoaded && !error && (
         <p className="text-xs text-gray-500 mt-1">
           Address autocomplete will be available once API is loaded
         </p>
       )}
-      {isLoaded && useNewAPI && (
-        <p className="text-xs text-green-600 mt-1">
-          ✅ Using latest PlaceAutocompleteElement API
-        </p>
-      )}
-      {isLoaded && !useNewAPI && (
-        <p className="text-xs text-blue-600 mt-1">
-          ✅ Using legacy Autocomplete API (working reliably)
-        </p>
-      )}
+
     </div>
   );
 }
+
