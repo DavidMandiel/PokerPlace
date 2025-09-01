@@ -18,14 +18,21 @@ export const metadata: Metadata = {
   description: "Beautiful, simple event organizing and social hub for poker clubs and players. No real-money transactions.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased text-white bg-app`}>
+    <html lang="en" className="h-full">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased text-white bg-app h-full`}>
         <Navigation />
         <main className="min-h-screen pb-20">
           {children}

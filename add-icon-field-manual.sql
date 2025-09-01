@@ -12,3 +12,6 @@ WHERE table_name = 'clubs' AND column_name = 'icon';
 -- Check if any clubs have icon data
 SELECT id, name, icon FROM public.clubs LIMIT 5;
 
+
+
+

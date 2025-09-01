@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { Home, Plus, Calendar, MapPin, Bell, User, LogOut } from "lucide-react";
+import { Home, Plus, Calendar, MapPin, Bell, User, LogOut, Users } from "lucide-react";
 import Image from "next/image";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -12,33 +12,44 @@ export default function Navigation() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Local Supabase configuration
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-    };
+    const initializeNavigation = async () => {
+      try {
+        const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        setLoading(false);
 
-    getUser();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            setUser(session?.user ?? null);
+            setLoading(false);
+          }
+        );
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
+        return () => subscription.unsubscribe();
+      } catch (err) {
+        console.error("Error initializing navigation:", err);
         setLoading(false);
       }
-    );
+    };
 
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    initializeNavigation();
+  }, [supabaseUrl, supabaseAnonKey]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/';
+    try {
+      const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (err) {
+      console.error("Error signing out:", err);
+      window.location.href = '/';
+    }
   };
 
   // If not logged in, show minimal header
@@ -66,10 +77,15 @@ export default function Navigation() {
 
   // For logged-in users, show bottom navigation
   return (
-    <div className="nav-bottom z-50">
-      <Link href="/dashboard" className="nav-item">
+    <div className="nav-bottom">
+      <Link href="/dashboard" className="nav-item active">
         <Home className="w-5 h-5" />
         <span className="text-xs">Home</span>
+      </Link>
+      
+      <Link href="/clubs" className="nav-item">
+        <Users className="w-5 h-5" />
+        <span className="text-xs">Clubs</span>
       </Link>
       
       <Link href="/events/new" className="nav-item">
@@ -77,14 +93,9 @@ export default function Navigation() {
         <span className="text-xs">Create</span>
       </Link>
       
-      <Link href="/events" className="nav-item">
-        <Calendar className="w-5 h-5" />
-        <span className="text-xs">Events</span>
-      </Link>
-      
-      <Link href="/clubs" className="nav-item">
+      <Link href="/events/nearby" className="nav-item">
         <MapPin className="w-5 h-5" />
-        <span className="text-xs">Clubs</span>
+        <span className="text-xs">Nearby</span>
       </Link>
       
       <Link href="/profile" className="nav-item">
