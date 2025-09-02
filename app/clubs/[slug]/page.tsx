@@ -1,410 +1,396 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { ArrowLeft, Users, Calendar, MapPin, Eye, EyeOff, Lock, Plus, Edit, Crown } from "lucide-react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { 
+  ArrowLeft, 
+  Edit, 
+  Trash2, 
+  MapPin, 
+  Star, 
+  Users, 
+  Calendar,
+  ChevronRight,
+  X
+} from "lucide-react";
 
-type User = SupabaseUser;
-
-type Club = {
+interface Club {
   id: string;
   name: string;
   slug: string;
   city: string;
+  address: string;
   visibility: "public" | "private" | "hidden";
-  description?: string;
-  owner_id: string;
-  icon?: string;
-  created_at: string;
-  member_count: number;
-  event_count: number;
-  user_role: "owner" | "member" | "none";
-};
+  description: string;
+  rules: string;
+  openingHours: string;
+  tables: number;
+  image?: string;
+  isOwner: boolean;
+  host: {
+    name: string;
+    rating: number;
+    eventsCreated: number;
+    avatar?: string;
+  };
+}
 
-export default function ClubPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
-  const [user, setUser] = useState<User | null>(null);
+interface Event {
+  id: string;
+  title: string;
+  type: "tournament" | "cash";
+  gameType: string;
+  buyin: number;
+  availableSeats: number;
+  totalSeats: number;
+  date: string;
+  image?: string;
+}
+
+interface Member {
+  id: string;
+  name: string;
+  eventsAttended: number;
+  avatar?: string;
+  role: "owner" | "admin" | "member";
+}
+
+export default function ClubDetailPage({ params }: { params: { slug: string } }) {
   const [club, setClub] = useState<Club | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
-  const [leaving, setLeaving] = useState(false);
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
-        fetchClub(slug, user.id);
-      } else {
-        // For public clubs, we can still show them without login
-        fetchClub(slug);
+    loadMockData();
+    setLoading(false);
+  }, [params.slug]);
+
+  const loadMockData = () => {
+    // Mock club data based on the image
+    const mockClub: Club = {
+      id: "1",
+      name: "The ACE Of Base",
+      slug: params.slug,
+      city: "Celina",
+      address: "6391 Elgin St. Celina, Delaware 10299",
+      visibility: "public",
+      description: "A friendly social club for recreational Poker player, mainly Tournaments. 5 Tables each night. Open from 18:00H",
+      rules: "No Firearms, No flippers, casual dressing",
+      openingHours: "18:00H",
+      tables: 5,
+      image: "/background.png",
+      isOwner: true, // This would be determined by user authentication
+      host: {
+        name: "John Dow",
+        rating: 3,
+        eventsCreated: 212,
+        avatar: "/images/john-dow.jpg"
       }
     };
 
-    getUser();
-  }, [supabase, slug]);
-
-  const fetchClub = async (slug: string, userId?: string) => {
-    try {
-      console.log('Fetching club with slug:', slug);
-      
-      // Fetch club details with member and event counts
-      const { data: clubData, error: clubError } = await supabase
-        .from('clubs')
-        .select(`
-          *,
-          club_members(count),
-          events(count)
-        `)
-        .eq('slug', slug)
-        .single();
-
-      console.log('Raw club data from database:', clubData);
-      console.log('Icon field value:', clubData?.icon);
-
-      if (clubError) {
-        console.error('Error fetching club:', clubError);
-        setError('Club not found');
-        setLoading(false);
-        return;
+    // Mock upcoming events
+    const mockEvents: Event[] = [
+      {
+        id: "1",
+        title: "TNLH TOURNAMENT",
+        type: "tournament",
+        gameType: "TNLH",
+        buyin: 100,
+        availableSeats: 5,
+        totalSeats: 27,
+        date: "24/2/2021",
+        image: "/background.png"
+      },
+      {
+        id: "2",
+        title: "TNLH CASH",
+        type: "cash",
+        gameType: "TNLH",
+        buyin: 100,
+        availableSeats: 5,
+        totalSeats: 27,
+        date: "24/2/2021",
+        image: "/globe.svg"
+      },
+      {
+        id: "3",
+        title: "TNLH CAS",
+        type: "cash",
+        gameType: "TNLH",
+        buyin: 100,
+        availableSeats: 5,
+        totalSeats: 27,
+        date: "24/2/2021",
+        image: "/file.svg"
       }
+    ];
 
-      if (!clubData) {
-        setError('Club not found');
-        setLoading(false);
-        return;
+    // Mock members
+    const mockMembers: Member[] = [
+      {
+        id: "1",
+        name: "John Dow",
+        eventsAttended: 212,
+        avatar: "/images/john-dow.jpg",
+        role: "owner"
+      },
+      {
+        id: "2",
+        name: "Jane Dow",
+        eventsAttended: 212,
+        avatar: "/images/jane-dow.jpg",
+        role: "admin"
+      },
+      {
+        id: "3",
+        name: "Jane Dow",
+        eventsAttended: 212,
+        avatar: "/images/jane-dow-2.jpg",
+        role: "member"
       }
+    ];
 
-      // Determine user role
-      let userRole: "owner" | "member" | "none" = "none";
-      
-      if (userId) {
-        if (clubData.owner_id === userId) {
-          userRole = "owner";
-        } else {
-          // Check if user is a member
-          const { data: memberData } = await supabase
-            .from('club_members')
-            .select('*')
-            .eq('club_id', clubData.id)
-            .eq('user_id', userId)
-            .single();
-          
-          if (memberData) {
-            userRole = "member";
-          }
-        }
-      }
-
-      setClub({
-        ...clubData,
-        member_count: clubData.club_members?.[0]?.count || 0,
-        event_count: clubData.events?.[0]?.count || 0,
-        user_role: userRole
-      });
-    } catch (error) {
-      console.error('Error fetching club:', error);
-      setError('Failed to load club details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getVisibilityIcon = (visibility: string) => {
-    switch (visibility) {
-      case 'public':
-        return <Eye className="w-4 h-4" />;
-      case 'private':
-        return <EyeOff className="w-4 h-4" />;
-      case 'hidden':
-        return <Lock className="w-4 h-4" />;
-      default:
-        return <Eye className="w-4 h-4" />;
-    }
-  };
-
-  const getVisibilityText = (visibility: string) => {
-    switch (visibility) {
-      case 'public':
-        return 'Public';
-      case 'private':
-        return 'Private';
-      case 'hidden':
-        return 'Hidden';
-      default:
-        return 'Public';
-    }
-  };
-
-  const handleJoinClub = async () => {
-    if (!club || !user) return;
-    
-    setJoining(true);
-    try {
-      const response = await fetch(`/api/clubs/${club.id}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to join club');
-      }
-
-      // Update local state to reflect membership
-      setClub(prev => prev ? { ...prev, user_role: 'member' as const } : null);
-      alert('Successfully joined the club!');
-    } catch (error) {
-      console.error('Error joining club:', error);
-      alert(error instanceof Error ? error.message : 'Failed to join club');
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  const handleLeaveClub = async () => {
-    if (!club || !user) return;
-    
-    setLeaving(true);
-    try {
-      const response = await fetch(`/api/clubs/${club.id}/leave`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to leave club');
-      }
-
-      // Update local state to reflect leaving
-      setClub(prev => prev ? { ...prev, user_role: 'none' as const } : null);
-      alert('Successfully left the club');
-    } catch (error) {
-      console.error('Error leaving club:', error);
-      alert(error instanceof Error ? error.message : 'Failed to leave club');
-    } finally {
-      setLeaving(false);
-    }
+    setClub(mockClub);
+    setEvents(mockEvents);
+    setMembers(mockMembers);
   };
 
   if (loading) {
     return (
-      <div className="bg-app flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="spinner-modern h-8 w-8 mx-auto mb-4"></div>
-          <p className="text-emerald-mintSoft">Loading club...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !club) {
-    return (
-      <div className="bg-app flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2 text-gradient">Club Not Found</h2>
-          <p className="text-emerald-mintSoft mb-6">{error || 'The club you are looking for does not exist.'}</p>
-          <Link
-            href="/clubs"
-            className="btn-accent rounded-xl px-6 py-2"
-          >
-            Browse Clubs
-          </Link>
+          <div className="spinner-clean h-8 w-8 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
   if (!club) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Club not found</h1>
+          <Link href="/clubs" className="text-blue-600 hover:underline">Back to clubs</Link>
+        </div>
+      </div>
+    );
   }
 
-  console.log('Rendering club page with club data:', club);
-  console.log('Club icon value:', club.icon);
-
   return (
-    <div className="bg-app min-h-screen p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="p-2 rounded-xl hover:bg-emerald-dark transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation Bar */}
+      <div className="bg-white border-b border-gray-200 px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/clubs" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
-            <div>
-              <h1 className="text-4xl font-bold text-gradient">{club.name}</h1>
-              <div className="flex items-center gap-4 text-emerald-mintSoft mt-2">
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {club.city}
-                </div>
-                <div className="flex items-center gap-1">
-                  {getVisibilityIcon(club.visibility)}
-                  {getVisibilityText(club.visibility)}
-                </div>
-              </div>
-            </div>
+            <h1 className="text-xl font-bold text-gray-900">{club.name}</h1>
           </div>
-
-          {/* Action Buttons */}
-          {club.user_role === "owner" && (
+          
+          {/* EDIT and DELETE buttons - Only visible to club owner */}
+          {club.isOwner && (
             <div className="flex items-center gap-2">
-              <Link
-                href={`/clubs/${club.slug}/edit`}
-                className="btn-outline-modern rounded-xl px-4 py-2 flex items-center gap-2"
-              >
+              <Link href={`/clubs/${club.slug}/edit`} className="btn-secondary flex items-center gap-2">
                 <Edit className="w-4 h-4" />
-                Edit Club
+                Edit
               </Link>
-              <Link
-                href={`/clubs/${club.slug}/events/new`}
-                className="btn-accent rounded-xl px-4 py-2 flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Event
+              <button className="btn-danger flex items-center gap-2">
+                <Trash2 className="w-4 h-4" />
+                Delete Club
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="container-mobile p-4">
+        {/* Club Header Image */}
+        <div className="relative mb-6">
+          <div className="w-full h-48 bg-gradient-to-br from-green-600 to-green-800 rounded-xl overflow-hidden">
+            {club.image ? (
+              <img 
+                src={club.image} 
+                alt={club.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center">
+                <span className="text-white text-4xl font-bold">{club.name.charAt(0)}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Edit button overlay - Only visible to club owner */}
+          {club.isOwner && (
+            <div className="absolute top-4 right-4">
+              <Link href={`/clubs/${club.slug}/edit`} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                <Edit className="w-4 h-4" />
+                Edit
               </Link>
             </div>
           )}
         </div>
 
-                 {/* Club Icon and Info */}
-         <div className="flex items-center gap-6 mb-8">
-           {/* Club Icon */}
-           <div className="w-24 h-24 rounded-xl border-2 border-emerald-mint/30 flex items-center justify-center bg-emerald-dark/50">
-             {club.icon ? (
-               <img 
-                 src={club.icon} 
-                 alt={`${club.name} icon`}
-                 className="w-full h-full object-cover rounded-lg"
-               />
-             ) : (
-               <span className="text-4xl font-bold text-emerald-mint">
-                 {club.name.charAt(0).toUpperCase()}
-               </span>
-             )}
-           </div>
-           
-           {/* Club Stats */}
-           <div className="flex-1 grid gap-4 md:grid-cols-3">
-          <div className="card-emerald p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <Users className="w-6 h-6 text-emerald-mint" />
-              <h3 className="font-semibold text-glow">Members</h3>
+        {/* Hosted by Section */}
+        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+          <h2 className="font-bold text-gray-900 mb-3">Hosted by</h2>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              {club.host.avatar ? (
+                <img 
+                  src={club.host.avatar} 
+                  alt={club.host.name}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="text-white font-bold text-lg">
+                  {club.host.name.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
-            <p className="text-3xl font-bold text-emerald-mint">{club.member_count}</p>
-            <p className="text-sm text-emerald-mintSoft">Active members</p>
-          </div>
-
-          <div className="card-teal p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <Calendar className="w-6 h-6 text-teal-accent" />
-              <h3 className="font-semibold text-glow">Events</h3>
+            <div>
+              <div className="font-medium text-gray-900">{club.host.name}</div>
+              <div className="flex items-center gap-1 text-sm text-gray-600">
+                <span>Rated:</span>
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      className={`w-4 h-4 ${i < club.host.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="text-sm text-gray-600">Events Created: {club.host.eventsCreated}</div>
             </div>
-            <p className="text-3xl font-bold text-teal-accent">{club.event_count}</p>
-            <p className="text-sm text-teal-soft">Total events</p>
-          </div>
-
-          <div className="card-olive p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <Crown className="w-6 h-6 text-olive-accent" />
-              <h3 className="font-semibold text-glow">Your Role</h3>
-            </div>
-            <p className="text-xl font-bold text-olive-accent capitalize">{club.user_role}</p>
-            <p className="text-sm text-olive-limeSoft">
-              {club.user_role === "owner" ? "Club owner" : 
-               club.user_role === "member" ? "Club member" : "Not a member"}
-            </p>
           </div>
         </div>
-      </div>
 
-        {/* Club Description */}
-        {club.description && (
-          <div className="card-emerald p-6 mb-8">
-            <h3 className="font-semibold text-glow mb-3">About This Club</h3>
-            <p className="text-emerald-mintSoft leading-relaxed">{club.description}</p>
+        {/* Club Description Section */}
+        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+          <h2 className="font-bold text-gray-900 mb-3">Club Description</h2>
+          <div className="flex items-start gap-3">
+            <p className="text-gray-600 flex-1">{club.description}</p>
+            <div className="flex items-center gap-1 text-gray-600">
+              <MapPin className="w-4 h-4 text-red-500" />
+              <span className="text-sm">{club.address}</span>
+            </div>
           </div>
-        )}
-
-        {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Link
-            href={`/clubs/${club.slug}/events`}
-            className="card-teal p-6 hover:bg-teal-dark/50 transition-colors"
-          >
-            <div className="flex items-center gap-4">
-              <Calendar className="w-8 h-8 text-teal-accent" />
-              <div>
-                <h3 className="font-semibold text-glow">View Events</h3>
-                <p className="text-teal-soft">See upcoming and past events</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href={`/clubs/${club.slug}/members`}
-            className="card-olive p-6 hover:bg-olive-dark/50 transition-colors"
-          >
-            <div className="flex items-center gap-4">
-              <Users className="w-8 h-8 text-olive-accent" />
-              <div>
-                <h3 className="font-semibold text-glow">View Members</h3>
-                <p className="text-olive-limeSoft">See who's in the club</p>
-              </div>
-            </div>
-          </Link>
         </div>
 
-        {/* Join/Leave Club Button */}
-        {user && club.user_role === "none" && club.visibility !== "hidden" && (
-          <div className="mt-8 text-center">
-            <button 
-              onClick={handleJoinClub}
-              disabled={joining}
-              className="btn-accent rounded-xl px-8 py-3 disabled:opacity-60"
-            >
-              {joining ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="spinner-modern h-4 w-4"></div>
-                  Joining...
-                </div>
-              ) : (
-                'Join Club'
-              )}
-            </button>
-          </div>
-        )}
+        {/* Club Rules Section */}
+        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+          <h2 className="font-bold text-gray-900 mb-3">Club Rules</h2>
+          <p className="text-gray-600">{club.rules}</p>
+        </div>
 
-        {user && club.user_role === "member" && (
-          <div className="mt-8 text-center">
-            <button 
-              onClick={handleLeaveClub}
-              disabled={leaving}
-              className="btn-outline-modern rounded-xl px-8 py-3 disabled:opacity-60"
-            >
-              {leaving ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="spinner-modern h-4 w-4"></div>
-                  Leaving...
+        {/* Upcoming Events Section */}
+        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+          <h2 className="font-bold text-gray-900 mb-3">Upcoming Events</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {events.map((event) => (
+              <div key={event.id} className="flex-shrink-0 w-48">
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Event Image */}
+                  <div className="h-24 bg-gradient-to-r from-blue-500 to-purple-600 relative">
+                    {event.image ? (
+                      <img 
+                        src={event.image} 
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                        <span className="text-white text-lg font-bold">{event.gameType}</span>
+                      </div>
+                    )}
+                    
+                    {/* Manage button - Only visible to club owner */}
+                    {club.isOwner && (
+                      <div className="absolute top-2 right-2">
+                        <Link href={`/events/${event.id}/manage`} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors">
+                          <Edit className="w-3 h-3" />
+                          Manage
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Event Details */}
+                  <div className="p-3">
+                    <h3 className="font-bold text-gray-900 text-sm mb-2">{event.title}</h3>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      <div>BUYIN: ${event.buyin}</div>
+                      <div>AVAILABLE SEATS: {event.availableSeats} / {event.totalSeats}</div>
+                      <div>DATE: {event.date}</div>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                'Leave Club'
-              )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Members Section */}
+        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-gray-900">Members</h2>
+            <Link href={`/clubs/${club.slug}/members`} className="text-blue-600 hover:underline text-sm">
+              All members
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {members.map((member) => (
+              <div key={member.id} className="flex-shrink-0 w-32">
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow relative">
+                  {/* Member Avatar */}
+                  <div className="h-20 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    {member.avatar ? (
+                      <img 
+                        src={member.avatar} 
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white font-bold text-lg">
+                        {member.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Member Details */}
+                  <div className="p-2 text-center">
+                    <h3 className="font-medium text-gray-900 text-sm mb-1">{member.name}</h3>
+                    <p className="text-xs text-gray-600">Events Attended: {member.eventsAttended}</p>
+                  </div>
+
+                  {/* Action Icons - Only visible to club owner */}
+                  {club.isOwner && (
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <button className="bg-blue-600 hover:bg-blue-700 text-white p-1 rounded-full transition-colors">
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                      <button className="bg-red-600 hover:bg-red-700 text-white p-1 rounded-full transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Delete Club Button - Only visible to club owner */}
+        {club.isOwner && (
+          <div className="mt-6">
+            <button className="w-full btn-danger flex items-center justify-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              Delete Club
             </button>
           </div>
         )}

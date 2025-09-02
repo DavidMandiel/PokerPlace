@@ -52,3 +52,7 @@ npm run dev
 - Monitor your usage in Google Cloud Console
 - Set up billing alerts to avoid unexpected charges
 - Consider implementing usage quotas
+
+
+
+

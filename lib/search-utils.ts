@@ -320,3 +320,7 @@ export function getLocationStatistics(users: UserProfile[]): {
     languageDistribution: { hebrew, english, other }
   };
 }
+
+
+
+

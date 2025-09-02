@@ -98,3 +98,7 @@ SELECT populate_multilang_location_fields();
 
 -- Drop the temporary function
 DROP FUNCTION populate_multilang_location_fields();
+
+
+
+
