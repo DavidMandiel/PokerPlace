@@ -5,6 +5,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { slugify } from "../../../lib/slug";
 import { ArrowLeft, MapPin, Users, Eye, EyeOff, Building2, Calendar, X, HelpCircle, Pencil, Image } from "lucide-react";
 import Link from "next/link";
+import GooglePlacesAutocomplete from "../../components/GooglePlacesAutocomplete";
 
 export default function NewClubPage() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export default function NewClubPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showHelpPopup, setShowHelpPopup] = useState(false);
+  const [location, setLocation] = useState("");
+  const [roles, setRoles] = useState("");
 
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -175,194 +178,211 @@ export default function NewClubPage() {
   return (
     <div className="w-full flex flex-col">
       {/* Header */}
-      <div className="mb-1">
-        <h1 className="text-lg font-bold text-gradient mb-1">Create a New Club</h1>
-        <p className="text-emerald-mint/60 text-xs">Set up your poker club to organize events and manage members</p>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Create a New Club</h1>
+        <p className="text-gray-600 text-base">Set up your poker club to organize events and manage members</p>
       </div>
 
       {/* Form */}
-      <div className="card-emerald p-3.5">
-        <form onSubmit={onSubmit} className="space-y-3.5">
-          {/* Club Name and Icon */}
-          <div className="flex gap-3">
+      <form onSubmit={onSubmit} className="space-y-6">
+        {/* Club's Logo Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-col items-center">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Club's Logo</h2>
+            <div className="relative">
+              <input 
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleIconUpload(e)}
+                className="hidden"
+                id="icon-upload"
+              />
+              <label 
+                htmlFor="icon-upload"
+                className="w-32 h-32 rounded-full border-2 border-dashed border-emerald-300 bg-emerald-50 flex items-center justify-center cursor-pointer hover:bg-emerald-100 hover:border-emerald-400 transition-colors"
+              >
+                {icon ? (
+                  <img 
+                    src={icon} 
+                    alt="Club logo" 
+                    className="w-28 h-28 object-cover rounded-full"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <Image className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                    <span className="text-emerald-600 text-sm font-medium">Upload Logo</span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Club Information Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Club Information</h2>
+          <div className="space-y-6">
             {/* Club Name */}
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-emerald-mint mb-1">
-                <Building2 className="w-3 h-3 inline mr-1" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Club Name *
               </label>
               <input 
                 value={name} 
                 onChange={(e) => setName(e.target.value)} 
                 required 
-                placeholder="e.g., Downtown Poker Club" 
-                className="w-full rounded-lg border border-emerald/20 bg-emerald/10 px-2 py-1 text-white placeholder-emerald-mint/50 focus:outline-none focus:ring-1 focus:ring-emerald-mint/20 focus:border-emerald-mint/30 text-sm" 
+                placeholder="Vegas High Rollers" 
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors" 
               />
-              <p className="text-xs text-emerald-mint/60 mt-1">
-                URL: pokerplace.com/clubs/{slugify(name || "your-club-name")}
-              </p>
             </div>
 
-            {/* Club Icon */}
-            <div className="w-24">
-              <label className="block text-xs font-medium text-emerald-mint mb-1">
-                <Image className="w-3 h-3 inline mr-1" />
-                Icon
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location *
               </label>
-              <div className="relative">
-                <input 
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleIconUpload(e)}
-                  className="hidden"
-                  id="icon-upload"
-                />
-                <label 
-                  htmlFor="icon-upload"
-                  className="w-full h-8 rounded-lg border border-emerald/20 bg-emerald/10 flex items-center justify-center cursor-pointer hover:bg-emerald/20 transition-colors"
-                >
-                  {icon ? (
-                    <img 
-                      src={icon} 
-                      alt="Club icon" 
-                      className="w-6 h-6 object-cover rounded"
-                    />
-                  ) : (
-                    <Image className="w-4 h-4 text-emerald-mint/50" />
-                  )}
-                </label>
-              </div>
-              <p className="text-xs text-emerald-mint/60 mt-1">
-                Upload icon
+              <GooglePlacesAutocomplete
+                value={location}
+                onChange={(address) => setLocation(address)}
+                placeholder="123 William Street, New York, NY"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors"
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description *
+              </label>
+              <textarea 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                placeholder="A friendly poker club for players of all levels..." 
+                rows={3}
+                maxLength={200}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none transition-colors" 
+              />
+              <p className="text-xs text-gray-500 mt-2 text-right">
+                {description.length}/200
               </p>
             </div>
-          </div>
 
-          {/* City */}
-          <div>
-            <label className="block text-xs font-medium text-emerald-mint mb-1">
-              <MapPin className="w-3 h-3 inline mr-1" />
-              City *
-            </label>
-            <input 
-              value={city} 
-              onChange={(e) => setCity(e.target.value)} 
-              required 
-              placeholder="e.g., Tel Aviv" 
-              className="w-full rounded-lg border border-emerald/20 bg-emerald/10 px-2 py-1 text-white placeholder-emerald-mint/50 focus:outline-none focus:ring-1 focus:ring-emerald-mint/20 focus:border-emerald-mint/30 text-sm" 
-            />
+            {/* Club Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Club Type *
+              </label>
+              <select 
+                value={visibility} 
+                onChange={(e) => setVisibility(e.target.value as any)} 
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none text-sm transition-colors"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.75rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1em 1em',
+                  paddingRight: '2.5rem'
+                }}
+              >
+                <option value="public" className="bg-white text-gray-900">Public - Anyone can join</option>
+                <option value="private" className="bg-white text-gray-900">Private - Only invited members</option>
+                <option value="hidden" className="bg-white text-gray-900">Hidden - Not visible in searches</option>
+              </select>
+            </div>
           </div>
+        </div>
 
-          {/* Description */}
+        {/* Club's Roles Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Club's Roles</h2>
           <div>
-            <label className="block text-xs font-medium text-emerald-mint mb-1">
-              Description
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Roles & Responsibilities
             </label>
             <textarea 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)} 
-              placeholder="Tell people about your club, what games you play, skill levels, etc." 
-              rows={2}
-              className="w-full rounded-lg border border-emerald/20 bg-emerald/10 px-2 py-1 text-white placeholder-emerald-mint/50 focus:outline-none focus:ring-1 focus:ring-emerald-mint/20 focus:border-emerald-mint/30 resize-none text-sm" 
+              value={roles} 
+              onChange={(e) => setRoles(e.target.value)} 
+              placeholder="Describe the roles and responsibilities within your club..." 
+              rows={4}
+              maxLength={200}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none transition-colors" 
             />
-          </div>
-
-          {/* Visibility */}
-          <div>
-            <label className="block text-xs font-medium text-emerald-mint mb-1">
-              {getVisibilityIcon()} Visibility *
-            </label>
-            <select 
-              value={visibility} 
-              onChange={(e) => setVisibility(e.target.value as any)} 
-              className="w-full rounded-lg border border-emerald/20 bg-emerald/10 px-2 py-1 text-white focus:outline-none focus:ring-1 focus:ring-emerald-mint/20 focus:border-emerald-mint/30 appearance-none text-sm"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234fd1a1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
-                backgroundPosition: 'right 0.5rem center',
-                backgroundRepeat: 'no-repeat',
-                backgroundSize: '1em 1em',
-                paddingRight: '2rem'
-              }}
-            >
-              <option value="public" className="bg-emerald-dark text-white">Public - Anyone can find and join</option>
-              <option value="private" className="bg-emerald-dark text-white">Private - Only invited members</option>
-              <option value="hidden" className="bg-emerald-dark text-white">Hidden - Not visible in searches</option>
-            </select>
-            <p className="text-xs text-emerald-mint/60 mt-1">
-              {getVisibilityDescription()}
+            <p className="text-xs text-gray-500 mt-2 text-right">
+              {roles.length}/200
             </p>
           </div>
+        </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-2 rounded-lg bg-brand-red/10 border border-brand-red/20 text-brand-red text-xs">
-              {error}
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <div className="flex gap-2 mt-4 items-center">
-            <button 
-              type="submit"
-              disabled={submitting || !name.trim() || !city.trim()} 
-              className="flex-1 bg-emerald hover:bg-emerald-dark text-white px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1 h-8"
-            >
-              {submitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Pencil className="w-3 h-3" />
-                  Create Club
-                </>
-              )}
-            </button>
-            <Link 
-              href="/dashboard"
-              className="border border-emerald-mint/30 text-emerald-mint px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-mint/10 transition-colors flex items-center justify-center h-8"
-            >
-              Cancel
-            </Link>
-            <button
-              type="button"
-              onClick={() => setShowHelpPopup(true)}
-              className="border border-emerald-mint/30 text-emerald-mint px-2 py-2 rounded-lg text-sm font-medium hover:bg-emerald-mint/10 transition-colors flex items-center justify-center h-8 w-8"
-              title="What happens next?"
-            >
-              <HelpCircle className="w-3 h-3" />
-            </button>
+        {/* Error Message */}
+        {error && (
+          <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {error}
           </div>
-        </form>
-      </div>
+        )}
+
+        {/* Save & Publish Button */}
+        <div className="flex gap-4 pt-4">
+          <button 
+            type="submit"
+            disabled={submitting || !name.trim() || !location.trim() || !description.trim()} 
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 h-12 shadow-sm"
+          >
+            {submitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Creating...
+              </>
+            ) : (
+              <>
+                <Pencil className="w-4 h-4" />
+                Save & Publish
+              </>
+            )}
+          </button>
+          <Link 
+            href="/dashboard"
+            className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center h-12 shadow-sm"
+          >
+            Cancel
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowHelpPopup(true)}
+            className="border border-gray-300 text-gray-700 px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center h-12 shadow-sm"
+            title="What happens next?"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        </div>
+      </form>
 
       {/* Help Popup */}
       {showHelpPopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="card-teal p-6 max-w-md w-full">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full border border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-glow flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 What happens next?
               </h3>
               <button
                 onClick={() => setShowHelpPopup(false)}
-                className="text-emerald-mint/60 hover:text-emerald-mint"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <ul className="space-y-2 text-teal-soft text-sm">
+            <ul className="space-y-2 text-gray-600 text-sm">
               <li>• Your club will be created and you'll be set as the owner</li>
               <li>• You can start inviting members and organizing events</li>
               <li>• You'll have full control over club settings and membership</li>
               <li>• You can customize your club's appearance and rules</li>
             </ul>
-            <div className="mt-4 flex justify-end">
+            <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowHelpPopup(false)}
-                className="btn-modern"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
               >
                 Got it!
               </button>
