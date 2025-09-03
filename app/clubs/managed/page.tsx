@@ -252,7 +252,7 @@ export default function ManagedClubsPage() {
             {clubs.map((club) => (
               <div key={club.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="p-4">
-                  {/* Club Header - Exact layout as per design */}
+                  {/* Club Header - EXACT layout as per design */}
                   <div className="flex items-start gap-4 mb-4">
                     {/* Club Logo - Circular */}
                     <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -269,7 +269,7 @@ export default function ManagedClubsPage() {
                       )}
                     </div>
 
-                    {/* Club Info - Exact positioning as per design */}
+                    {/* Club Info - EXACT positioning as per design */}
                     <div className="flex-1 min-w-0">
                       <div className="mb-2">
                         <h3 className="text-lg font-bold text-gray-900 truncate">{club.name}</h3>
@@ -289,7 +289,7 @@ export default function ManagedClubsPage() {
                       </div>
                     </div>
 
-                    {/* Message Members Button - Positioned to the right of club name as per design */}
+                    {/* Message Members Button - EXACT position as per design */}
                     <div className="flex-shrink-0">
                       <button 
                         onClick={() => handleMessageMembers(club.id, club.name)}
@@ -301,9 +301,9 @@ export default function ManagedClubsPage() {
                     </div>
                   </div>
 
-                  {/* Club Statistics Cards - Exact layout as per design */}
+                  {/* Club Statistics Cards - EXACT layout as per design */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    {/* Members Card - Clickable, exact design */}
+                    {/* Members Card - EXACT design */}
                     <button 
                       onClick={() => handleMembersClick(club.slug)}
                       className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-center transition-colors cursor-pointer"
@@ -315,7 +315,7 @@ export default function ManagedClubsPage() {
                       <div className="text-lg font-bold text-gray-900">{club.memberCount}</div>
                     </button>
 
-                    {/* Upcoming Events Card - Clickable, exact design */}
+                    {/* Upcoming Events Card - EXACT design */}
                     <button 
                       onClick={() => handleEventsClick(club.slug)}
                       className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-center transition-colors cursor-pointer"
@@ -328,7 +328,7 @@ export default function ManagedClubsPage() {
                     </button>
                   </div>
 
-                  {/* Action Buttons - Exact positioning and colors as per design */}
+                  {/* Action Buttons - EXACT positioning and colors as per design */}
                   <div className="flex items-center gap-2">
                     {/* Delete Club Button - Red background as per design */}
                     {deleteConfirm === club.id ? (

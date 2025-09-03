@@ -541,6 +541,7 @@ export default function NewClubPage() {
             </div>
           </div>
           
+          
         </div>
 
         {/* Club's Roles Section */}
