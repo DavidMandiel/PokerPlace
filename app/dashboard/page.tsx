@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import EventCard, { Event } from "../components/EventCard";
+import Navigation from "../components/Navigation";
 
 type User = SupabaseUser;
 
@@ -363,59 +364,22 @@ export default function DashboardPage() {
                      'Demo User';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Header - Dark Grey Bar - Removed "Home Page" text */}
-      <div className="bg-gray-800 text-white">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-gray-700 rounded-lg">
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-          <h1 className="text-xl font-bold">PokerPlace</h1>
-          <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-gray-700 rounded-lg">
-              <Search className="w-5 h-5" />
-            </button>
-            <Link href="/profile" className="p-2 hover:bg-gray-700 rounded-lg">
-              <User className="w-5 h-5" />
-            </Link>
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gray-50">
+        {/* User Avatar Section */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-lg">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="text-gray-700">
+              <p className="font-medium">Welcome back, {displayName}!</p>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* User Navigation Bar - White Background */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-lg">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div className="flex items-center gap-6">
-            <button className="flex flex-col items-center gap-1 text-blue-600">
-              <Home className="w-5 h-5" />
-              <span className="text-xs">Home</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 text-gray-600">
-              <Users className="w-5 h-5" />
-              <span className="text-xs">People</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 text-gray-600">
-              <Plus className="w-5 h-5" />
-              <span className="text-xs">Add</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 text-gray-600">
-              <MapPin className="w-5 h-5" />
-              <span className="text-xs">Location</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 text-gray-600">
-              <Bell className="w-5 h-5" />
-              <span className="text-xs">Notifications</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <div className="container-mobile">
         {/* Your Next Event Section - Half height card */}
@@ -472,17 +436,12 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Standalone My Clubs and Managed Clubs Buttons */}
+        {/* Managed Clubs Button */}
         <div className="mb-8">
-          <div className="flex gap-3">
-            <Link href="/clubs/registered" className="flex-1">
-              <button className="w-full bg-green-600 hover:bg-green-700 text-white text-sm py-3 px-4 rounded-lg transition-colors font-medium">
-                My Clubs
-              </button>
-            </Link>
-            <Link href="/clubs/managed" className="flex-1">
+          <div className="flex justify-center">
+            <Link href="/clubs/managed" className="w-full max-w-xs">
               <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-3 px-4 rounded-lg transition-colors font-medium">
-                Managed Clubs
+                Manage My Clubs
               </button>
             </Link>
           </div>
@@ -558,6 +517,7 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

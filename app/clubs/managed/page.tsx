@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Users, 
   Calendar, 
@@ -9,8 +10,11 @@ import {
   Plus,
   MapPin,
   Star,
-  ArrowLeft
+  ArrowLeft,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
+import Navigation from "../../components/Navigation";
 
 interface Club {
   id: string;
@@ -21,85 +25,146 @@ interface Club {
   description?: string;
   memberCount: number;
   upcomingEventsCount: number;
-  image?: string;
+  icon?: string;
+  owner_id: string;
 }
 
 export default function ManagedClubsPage() {
+  const router = useRouter();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
-    loadMockData();
-    setLoading(false);
-  }, []);
-
-  const loadMockData = () => {
-    // Mock managed clubs data
-    const mockManagedClubs: Club[] = [
-      {
-        id: "1",
-        name: "ACE OF SPADE",
-        slug: "ace-of-spade",
-        city: "Tel-Aviv",
-        visibility: "public",
-        description: "Premium poker club with high stakes games and tournaments",
-        memberCount: 45,
-        upcomingEventsCount: 3,
-        image: "/icon-app.png"
-      },
-      {
-        id: "2",
-        name: "KEVES HA KVASIM",
-        slug: "keves-ha-kvasim",
-        city: "Jerusalem",
-        visibility: "private",
-        description: "Exclusive private poker club for serious players",
-        memberCount: 23,
-        upcomingEventsCount: 1,
-        image: "/background.png"
-      },
-      {
-        id: "3",
-        name: "VEGAS ELITE",
-        slug: "vegas-elite",
-        city: "Las Vegas",
-        visibility: "public",
-        description: "High stakes poker club with professional atmosphere",
-        memberCount: 67,
-        upcomingEventsCount: 5,
-        image: "/globe.svg"
-      },
-      {
-        id: "4",
-        name: "DOWNTOWN POKER",
-        slug: "downtown-poker",
-        city: "New York",
-        visibility: "public",
-        description: "Friendly neighborhood poker club for all skill levels",
-        memberCount: 34,
-        upcomingEventsCount: 2,
-        image: "/file.svg"
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth');
+        return;
       }
-    ];
+      setUser(user);
+      loadUserClubs(user.id);
+    };
+    getUser();
+  }, [supabase, router]);
 
-    setClubs(mockManagedClubs);
+  const loadUserClubs = async (userId: string) => {
+    try {
+      setLoading(true);
+      
+      // Fetch clubs owned by the current user
+      const { data: ownedClubs, error: clubsError } = await supabase
+        .from('clubs')
+        .select(`
+          id,
+          name,
+          slug,
+          city,
+          visibility,
+          description,
+          icon,
+          owner_id
+        `)
+        .eq('owner_id', userId);
+
+      if (clubsError) {
+        console.error('Error fetching clubs:', clubsError);
+        return;
+      }
+
+      // Fetch member counts for each club
+      const clubsWithStats = await Promise.all(
+        (ownedClubs || []).map(async (club) => {
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from('club_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('club_id', club.id);
+
+          // Get upcoming events count
+          const { count: upcomingEventsCount } = await supabase
+            .from('events')
+            .select('*', { count: 'exact', head: true })
+            .eq('club_id', club.id)
+            .gte('starts_at', new Date().toISOString());
+
+          return {
+            ...club,
+            memberCount: memberCount || 0,
+            upcomingEventsCount: upcomingEventsCount || 0
+          };
+        })
+      );
+
+      setClubs(clubsWithStats);
+    } catch (error) {
+      console.error('Error loading clubs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClub = async (clubId: string, clubName: string) => {
+    if (deleteConfirm !== clubId) {
+      setDeleteConfirm(clubId);
+      return;
+    }
+
+    try {
+      setDeleting(clubId);
+      
+      const response = await fetch(`/api/clubs/${clubId}/delete`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete club');
+      }
+
+      // Remove club from local state
+      setClubs(clubs.filter(club => club.id !== clubId));
+      setDeleteConfirm(null);
+      
+      // Show success message (you could add a toast notification here)
+      console.log(`Club "${clubName}" deleted successfully`);
+      
+    } catch (error) {
+      console.error('Error deleting club:', error);
+      alert(`Error deleting club: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeleting(clubId);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="spinner-clean h-8 w-8 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your clubs...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-4">
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -107,34 +172,33 @@ export default function ManagedClubsPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">Managed Clubs</h1>
-              <p className="text-gray-600 text-sm">Manage your poker clubs and events</p>
-            </div>
+                          </div>
           </div>
-          <Link href="/clubs/new" className="btn-primary flex items-center gap-2">
+          <Link href="/clubs/new" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Create New Club
+            New Club
           </Link>
         </div>
       </div>
 
-      <div className="container-mobile p-4">
+      <div className="max-w-6xl mx-auto px-6 py-4">
         {/* Stats Summary */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-blue-600">{clubs.length}</div>
-            <div className="text-sm text-gray-600">Total Clubs</div>
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-white rounded-lg p-3 text-center border border-gray-200">
+            <div className="text-lg font-bold text-emerald-600">{clubs.length}</div>
+            <div className="text-xs text-gray-600">Total Clubs</div>
           </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="bg-white rounded-lg p-3 text-center border border-gray-200">
+            <div className="text-lg font-bold text-blue-600">
               {clubs.reduce((sum, club) => sum + club.memberCount, 0)}
             </div>
-            <div className="text-sm text-gray-600">Total Members</div>
+            <div className="text-xs text-gray-600">Total Members</div>
           </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-purple-600">
+          <div className="bg-white rounded-lg p-3 text-center border border-gray-200">
+            <div className="text-lg font-bold text-purple-600">
               {clubs.reduce((sum, club) => sum + club.upcomingEventsCount, 0)}
             </div>
-            <div className="text-sm text-gray-600">Upcoming Events</div>
+            <div className="text-xs text-gray-600">Upcoming Events</div>
           </div>
         </div>
 
@@ -146,12 +210,12 @@ export default function ManagedClubsPage() {
                 {/* Club Header */}
                 <div className="flex items-start gap-4 mb-4">
                   {/* Club Logo */}
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    {club.image ? (
+                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {club.icon ? (
                       <img 
-                        src={club.image} 
+                        src={club.icon} 
                         alt={club.name}
-                        className="w-full h-full object-cover rounded-xl"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <span className="text-white font-bold text-xl">
@@ -193,13 +257,13 @@ export default function ManagedClubsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {/* Members Count - Linked to Members Page */}
-                    <Link href={`/clubs/${club.slug}/members`} className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
+                    <Link href={`/clubs/${club.slug}/members`} className="flex items-center gap-2 text-gray-600 hover:text-emerald-600 transition-colors">
                       <Users className="w-5 h-5" />
                       <span className="text-sm font-medium">{club.memberCount} members</span>
                     </Link>
 
                     {/* Upcoming Events - Linked to Events Page */}
-                    <Link href={`/clubs/${club.slug}/events`} className="flex items-center gap-2 text-gray-600 hover:text-green-600 transition-colors">
+                    <Link href={`/clubs/${club.slug}/events`} className="flex items-center gap-2 text-gray-600 hover:text-emerald-600 transition-colors">
                       <Calendar className="w-5 h-5" />
                       <span className="text-sm font-medium">{club.upcomingEventsCount} upcoming events</span>
                     </Link>
@@ -207,16 +271,44 @@ export default function ManagedClubsPage() {
 
                   <div className="flex items-center gap-2">
                     {/* Edit Club Button */}
-                    <Link href={`/clubs/${club.slug}/edit`} className="btn-secondary flex items-center gap-2">
+                    <Link href={`/clubs/${club.slug}/edit`} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                       <Edit className="w-4 h-4" />
-                      Edit Club
+                      Edit
                     </Link>
 
                     {/* Create New Event Button */}
-                    <Link href={`/clubs/${club.slug}/events/new`} className="btn-primary flex items-center gap-2">
+                    <Link href={`/clubs/${club.slug}/events/new`} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       New Event
                     </Link>
+
+                    {/* Delete Club Button */}
+                    {deleteConfirm === club.id ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteClub(club.id, club.name)}
+                          disabled={deleting === club.id}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                          {deleting === club.id ? 'Deleting...' : 'Confirm Delete'}
+                        </button>
+                        <button
+                          onClick={cancelDelete}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(club.id)}
+                        className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -232,7 +324,7 @@ export default function ManagedClubsPage() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No managed clubs yet</h3>
             <p className="text-gray-600 mb-6">Start by creating your first poker club</p>
-            <Link href="/clubs/new" className="btn-primary inline-flex items-center gap-2">
+            <Link href="/clubs/new" className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Create Your First Club
             </Link>
@@ -240,6 +332,7 @@ export default function ManagedClubsPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

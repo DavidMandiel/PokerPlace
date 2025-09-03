@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { Home, Plus, Calendar, MapPin, Bell, User, LogOut, Users } from "lucide-react";
+import { Home, Plus, Calendar, MapPin, Bell, User, LogOut, Users, Menu, Search } from "lucide-react";
 import Image from "next/image";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -75,33 +75,60 @@ export default function Navigation() {
     );
   }
 
-  // For logged-in users, show bottom navigation
+  // For logged-in users, show top navigation with main menu items below
   return (
-    <div className="nav-bottom">
-      <Link href="/dashboard" className="nav-item active">
-        <Home className="w-5 h-5" />
-        <span className="text-xs">Home</span>
-      </Link>
-      
-      <Link href="/clubs" className="nav-item">
-        <Users className="w-5 h-5" />
-        <span className="text-xs">Clubs</span>
-      </Link>
-      
-      <Link href="/events/new" className="nav-item">
-        <Plus className="w-5 h-5" />
-        <span className="text-xs">Create</span>
-      </Link>
-      
-      <Link href="/events/nearby" className="nav-item">
-        <MapPin className="w-5 h-5" />
-        <span className="text-xs">Nearby</span>
-      </Link>
-      
-      <Link href="/profile" className="nav-item">
-        <User className="w-5 h-5" />
-        <span className="text-xs">Profile</span>
-      </Link>
-    </div>
+    <>
+      {/* Top Header Bar */}
+      <div className="sticky top-0 z-50 bg-slate-700 border-b border-slate-600">
+        <nav className="max-w-7xl mx-auto flex items-center justify-between h-16 px-8">
+          <div className="flex items-center gap-3">
+            <button className="text-white p-2 hover:bg-slate-600 rounded-lg transition-colors">
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="text-xl font-bold text-white">PokerPlace</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="text-white p-2 hover:bg-slate-600 rounded-lg transition-colors">
+              <Search className="w-5 h-5" />
+            </button>
+            <button className="text-white p-2 hover:bg-slate-600 rounded-lg transition-colors">
+              <User className="w-5 h-5" />
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      {/* Main Navigation Menu */}
+      <div className="bg-white border-b border-gray-200">
+        <nav className="max-w-7xl mx-auto flex items-center justify-center py-4 px-8">
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="flex flex-col items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors">
+              <Home className="w-6 h-6 fill-current" />
+              <span className="text-sm font-medium">Home</span>
+            </Link>
+            
+            <Link href="/clubs" className="flex flex-col items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors">
+              <Users className="w-6 h-6" />
+              <span className="text-sm font-medium">People</span>
+            </Link>
+            
+            <Link href="/clubs/new" className="flex flex-col items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors">
+              <Plus className="w-6 h-6" />
+              <span className="text-sm font-medium">Add</span>
+            </Link>
+            
+            <Link href="/events/nearby" className="flex flex-col items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors">
+              <MapPin className="w-6 h-6" />
+              <span className="text-sm font-medium">Location</span>
+            </Link>
+            
+            <Link href="/notifications" className="flex flex-col items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors">
+              <Bell className="w-6 h-6" />
+              <span className="text-sm font-medium">Notifications</span>
+            </Link>
+          </div>
+        </nav>
+      </div>
+    </>
   );
 }

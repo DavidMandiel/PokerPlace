@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { Plus, Users, MapPin, Eye, EyeOff, Lock } from "lucide-react";
+import Navigation from "../components/Navigation";
 
 type Club = {
   id: string;
@@ -56,9 +57,11 @@ export default function ClubsPage() {
   };
 
   return (
-    <div className="bg-app space-y-8 p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between animate-fade-in">
+    <>
+      <Navigation />
+      <div className="bg-app space-y-8 p-4">
+        {/* Header */}
+        <div className="flex items-center justify-between animate-fade-in">
         <div>
           <h1 className="text-3xl font-bold text-gradient">Poker Clubs</h1>
           <p className="text-emerald-mintSoft mt-1">
@@ -141,7 +144,8 @@ export default function ClubsPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
