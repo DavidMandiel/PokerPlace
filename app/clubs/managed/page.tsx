@@ -10,8 +10,7 @@ import {
   Plus,
   MapPin,
   ArrowLeft,
-  Trash2,
-  AlertTriangle,
+  Eye,
   MessageSquare
 } from "lucide-react";
 import Navigation from "../../components/Navigation";
@@ -35,8 +34,6 @@ export default function ManagedClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -113,41 +110,9 @@ export default function ManagedClubsPage() {
     }
   };
 
-  const handleDeleteClub = async (clubId: string, clubName: string) => {
-    if (deleteConfirm !== clubId) {
-      setDeleteConfirm(clubId);
-      return;
-    }
-
-    try {
-      setDeleting(clubId);
-      
-      const response = await fetch(`/api/clubs/${clubId}/delete`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete club');
-      }
-
-      // Remove club from local state
-      setClubs(clubs.filter(club => club.id !== clubId));
-      setDeleteConfirm(null);
-      
-      // Show success message (you could add a toast notification here)
-      console.log(`Club "${clubName}" deleted successfully`);
-      
-    } catch (error) {
-      console.error('Error deleting club:', error);
-      alert(`Error deleting club: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  const cancelDelete = () => {
-    setDeleteConfirm(null);
+  // Handle View Club - redirect to club's main page
+  const handleViewClub = (clubSlug: string) => {
+    router.push(`/clubs/${clubSlug}`);
   };
 
   const getPrivacyColor = (visibility: string) => {
@@ -250,12 +215,21 @@ export default function ManagedClubsPage() {
           {/* Clubs List */}
           <div className="space-y-4">
             {clubs.map((club) => (
-              <div key={club.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="p-4">
-                  {/* Club Header - EXACT layout as per design */}
-                  <div className="flex items-start gap-4 mb-4">
+              <div key={club.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden h-52 relative">
+                {/* Clickable area for club main page - excludes action buttons */}
+                <Link 
+                  href={`/clubs/${club.slug}`}
+                  className="absolute inset-0 z-10"
+                  style={{ 
+                    clipPath: 'polygon(0 0, 100% 0, 100% 75%, 0 75%)' // Covers top 75% of card, excluding action buttons
+                  }}
+                />
+                
+                <div className="p-3 pb-4 h-full flex flex-col relative z-20">
+                  {/* Club Header - Compact layout */}
+                  <div className="flex items-start gap-3 mb-2">
                     {/* Club Logo - Circular */}
-                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {club.icon ? (
                         <img 
                           src={club.icon} 
@@ -263,111 +237,117 @@ export default function ManagedClubsPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-white font-bold text-xl">
+                        <span className="text-white font-bold text-lg">
                           {club.name.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
 
-                    {/* Club Info - EXACT positioning as per design */}
+                    {/* Club Info - Compact layout */}
                     <div className="flex-1 min-w-0">
-                      <div className="mb-2">
-                        <h3 className="text-lg font-bold text-gray-900 truncate">{club.name}</h3>
+                      <div className="mb-1">
+                        <h3 className="text-base font-bold text-gray-900 leading-tight">{club.name}</h3>
                       </div>
                       
-                      <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
+                      <div className="flex items-center gap-1 mb-1">
+                        <MapPin className="w-3 h-3 text-gray-500" />
+                        <span className="text-xs text-gray-600">
                           {club.city}{club.country ? `, ${club.country}` : ''}
                         </span>
                       </div>
-                      
-                      <div className="mb-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPrivacyColor(club.visibility)}`}>
-                          {getPrivacyLabel(club.visibility)}
-                        </span>
-                      </div>
                     </div>
 
-                    {/* Message Members Button - EXACT position as per design */}
-                    <div className="flex-shrink-0">
+                    {/* Message Members Button - Small with caption below */}
+                    <div className="flex-shrink-0 text-center">
                       <button 
-                        onClick={() => handleMessageMembers(club.id, club.name)}
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleMessageMembers(club.id, club.name);
+                        }}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-1.5 rounded-lg transition-colors flex flex-col items-center gap-1 relative z-30"
                       >
-                        <MessageSquare className="w-4 h-4" />
-                        <span className="text-sm">Message Members</span>
+                        <MessageSquare className="w-3 h-3" />
+                        <span className="text-xs">Message</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Club Statistics Cards - EXACT layout as per design */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {/* Members Card - EXACT design */}
+                  {/* Privacy Level - Below logo */}
+                  <div className="mb-2">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPrivacyColor(club.visibility)}`}>
+                      {getPrivacyLabel(club.visibility)}
+                    </span>
+                  </div>
+
+                  {/* Club Statistics Cards - Very compact layout */}
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    {/* Members Card */}
                     <button 
-                      onClick={() => handleMembersClick(club.slug)}
-                      className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-center transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleMembersClick(club.slug);
+                      }}
+                      className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-1 text-center transition-colors cursor-pointer relative z-30"
                     >
-                      <div className="flex items-center justify-center mb-2">
-                        <Users className="w-5 h-5 text-gray-600" />
+                      <div className="flex items-center justify-center mb-0.5">
+                        <Users className="w-3 h-3 text-gray-600" />
                       </div>
-                      <div className="text-xs text-gray-600 mb-1">Members</div>
-                      <div className="text-lg font-bold text-gray-900">{club.memberCount}</div>
+                      <div className="text-xs text-gray-600 mb-0.5">Members</div>
+                      <div className="text-xs font-bold text-gray-900">{club.memberCount}</div>
                     </button>
 
-                    {/* Upcoming Events Card - EXACT design */}
+                    {/* Upcoming Events Card */}
                     <button 
-                      onClick={() => handleEventsClick(club.slug)}
-                      className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-center transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleEventsClick(club.slug);
+                      }}
+                      className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-1 text-center transition-colors cursor-pointer relative z-30"
                     >
-                      <div className="flex items-center justify-center mb-2">
-                        <Calendar className="w-5 h-5 text-gray-600" />
+                      <div className="flex items-center justify-center mb-0.5">
+                        <Calendar className="w-3 h-3 text-gray-600" />
                       </div>
-                      <div className="text-xs text-gray-600 mb-1">Upcoming Events</div>
-                      <div className="text-lg font-bold text-gray-900">{club.upcomingEventsCount}</div>
+                      <div className="text-xs text-gray-600 mb-0.5">Upcoming Events</div>
+                      <div className="text-xs font-bold text-gray-900">{club.upcomingEventsCount}</div>
                     </button>
                   </div>
 
-                  {/* Action Buttons - EXACT positioning and colors as per design */}
-                  <div className="flex items-center gap-2">
-                    {/* Delete Club Button - Red background as per design */}
-                    {deleteConfirm === club.id ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleDeleteClub(club.id, club.name)}
-                          disabled={deleting === club.id}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <AlertTriangle className="w-4 h-4" />
-                          {deleting === club.id ? 'Deleting...' : 'Confirm Delete'}
-                        </button>
-                        <button
-                          onClick={cancelDelete}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirm(club.id)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete Club
-                      </button>
-                    )}
+                  {/* Action Buttons - Small with captions at bottom, spanning full width */}
+                  <div className="flex items-center justify-between gap-1 mt-auto pb-0 relative z-30">
+                    {/* View Club Button */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleViewClub(club.slug);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 pt-1 pb-0 rounded text-xs font-medium transition-colors flex flex-col items-center gap-1 flex-1"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span className="text-xs">View Club</span>
+                    </button>
 
-                    {/* Edit Club Button - Purple background as per design */}
-                    <Link href={`/clubs/${club.slug}/edit`} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                      <Edit className="w-4 h-4" />
-                      Edit Club
+                    {/* Edit Club Button */}
+                    <Link 
+                      href={`/clubs/${club.slug}/edit`} 
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-2 pt-1 pb-0 rounded text-xs font-medium transition-colors flex flex-col items-center gap-1 flex-1"
+                    >
+                      <Edit className="w-3 h-3" />
+                      <span className="text-xs">Edit</span>
                     </Link>
 
-                    {/* Add Event Button - Green background as per design */}
-                    <Link href={`/clubs/${club.slug}/events/new`} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      Add Event
+                    {/* Add Event Button */}
+                    <Link 
+                      href={`/clubs/${club.slug}/events/new`} 
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 pt-1 pb-0 rounded text-xs font-medium transition-colors flex flex-col items-center gap-1 flex-1"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      <span className="text-xs">Add Event</span>
                     </Link>
                   </div>
                 </div>

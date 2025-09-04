@@ -2,13 +2,18 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
-import { Home, Plus, Calendar, MapPin, Bell, User, LogOut, Users, Menu, Search } from "lucide-react";
+import { Home, Plus, Calendar, MapPin, Bell, User, LogOut, Users, Menu, Search, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = SupabaseUser;
 
-export default function Navigation() {
+interface NavigationProps {
+  showBackButton?: boolean;
+  backHref?: string;
+}
+
+export default function Navigation({ showBackButton = false, backHref = "/" }: NavigationProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -82,9 +87,15 @@ export default function Navigation() {
       <div className="sticky top-0 z-50 bg-slate-700 border-b border-slate-600">
         <nav className="max-w-7xl mx-auto flex items-center justify-between h-16 px-8">
           <div className="flex items-center gap-3">
-            <button className="text-white p-2 hover:bg-slate-600 rounded-lg transition-colors">
-              <Menu className="w-5 h-5" />
-            </button>
+            {showBackButton ? (
+              <Link href={backHref} className="text-white p-1 hover:bg-slate-600 rounded-lg transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+            ) : (
+              <button className="text-white p-2 hover:bg-slate-600 rounded-lg transition-colors">
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
             <span className="text-xl font-bold text-white">PokerPlace</span>
           </div>
           <div className="flex items-center gap-3">

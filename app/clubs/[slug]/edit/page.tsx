@@ -349,10 +349,10 @@ export default function EditClubPage({ params }: { params: Promise<{ slug: strin
 
   return (
     <>
-      <Navigation />
+      <Navigation showBackButton={true} backHref={`/clubs/${slug}`} />
       <div className="w-full flex flex-col px-6">
         {/* Header */}
-        <div className="mb-6 pt-6">
+        <div className="mb-6">
           <h1 className="text-4xl font-bold text-emerald-600 mb-3">Edit Club</h1>
           <p className="text-emerald-700/80 text-lg">Update your poker community</p>
         </div>

@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X
 } from "lucide-react";
+import Navigation from "../../components/Navigation";
 
 interface Club {
   id: string;
@@ -63,98 +64,158 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    loadMockData();
-    setLoading(false);
+    loadClubData();
   }, [params.slug]);
 
-  const loadMockData = () => {
-    // Mock club data based on the image
-    const mockClub: Club = {
-      id: "1",
-      name: "The ACE Of Base",
-      slug: params.slug,
-      city: "Celina",
-      address: "6391 Elgin St. Celina, Delaware 10299",
-      visibility: "public",
-      description: "A friendly social club for recreational Poker player, mainly Tournaments. 5 Tables each night. Open from 18:00H",
-      rules: "No Firearms, No flippers, casual dressing",
-      openingHours: "18:00H",
-      tables: 5,
-      image: "/background.png",
-      isOwner: true, // This would be determined by user authentication
-      host: {
-        name: "John Dow",
-        rating: 3,
-        eventsCreated: 212,
-        avatar: "/images/john-dow.jpg"
-      }
-    };
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
-    // Mock upcoming events
-    const mockEvents: Event[] = [
-      {
-        id: "1",
-        title: "TNLH TOURNAMENT",
-        type: "tournament",
-        gameType: "TNLH",
-        buyin: 100,
-        availableSeats: 5,
-        totalSeats: 27,
-        date: "24/2/2021",
+  const loadClubData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+
+      // Fetch club data by slug
+      const { data: clubData, error: clubError } = await supabase
+        .from('clubs')
+        .select(`
+          id,
+          name,
+          slug,
+          city,
+          country,
+          street,
+          street_number,
+          state,
+          postal_code,
+          visibility,
+          description,
+          icon,
+          owner_id,
+          created_at
+        `)
+        .eq('slug', params.slug)
+        .single();
+
+      if (clubError) {
+        console.error('Error fetching club:', clubError);
+        setLoading(false);
+        return;
+      }
+
+      if (!clubData) {
+        setLoading(false);
+        return;
+      }
+
+      // Get club owner info
+      const { data: ownerData } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', clubData.owner_id)
+        .single();
+
+      // Get events count for the owner
+      const { count: eventsCount } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('club_id', clubData.id);
+
+      // Format address
+      const addressParts = [
+        clubData.street_number,
+        clubData.street,
+        clubData.city,
+        clubData.state,
+        clubData.country,
+        clubData.postal_code
+      ].filter(Boolean);
+      const address = addressParts.join(', ');
+
+      // Create club object
+      const club: Club = {
+        id: clubData.id,
+        name: clubData.name,
+        slug: clubData.slug,
+        city: clubData.city,
+        address: address || `${clubData.city}, ${clubData.country}`,
+        visibility: clubData.visibility,
+        description: clubData.description || "No description available",
+        rules: "No Firearms, No flippers, casual dressing", // Default rules for now
+        openingHours: "18:00H", // Default opening hours
+        tables: 5, // Default table count
+        image: clubData.icon || "/background.png",
+        isOwner: user?.id === clubData.owner_id,
+        host: {
+          name: ownerData?.full_name || "Unknown Host",
+          rating: 3, // Default rating
+          eventsCreated: eventsCount || 0,
+          avatar: ownerData?.avatar_url || "/images/default-avatar.png"
+        }
+      };
+
+      // Fetch upcoming events
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          type,
+          game_type,
+          buyin,
+          max_participants,
+          starts_at,
+          club_id
+        `)
+        .eq('club_id', clubData.id)
+        .gte('starts_at', new Date().toISOString())
+        .order('starts_at', { ascending: true })
+        .limit(3);
+
+      const events: Event[] = (eventsData || []).map(event => ({
+        id: event.id,
+        title: event.title,
+        type: event.type as "tournament" | "cash",
+        gameType: event.game_type || "TNLH",
+        buyin: event.buyin || 100,
+        availableSeats: Math.max(0, (event.max_participants || 27) - 5), // Mock available seats
+        totalSeats: event.max_participants || 27,
+        date: new Date(event.starts_at).toLocaleDateString('en-GB'),
         image: "/background.png"
-      },
-      {
-        id: "2",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        availableSeats: 5,
-        totalSeats: 27,
-        date: "24/2/2021",
-        image: "/globe.svg"
-      },
-      {
-        id: "3",
-        title: "TNLH CAS",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        availableSeats: 5,
-        totalSeats: 27,
-        date: "24/2/2021",
-        image: "/file.svg"
-      }
-    ];
+      }));
 
-    // Mock members
-    const mockMembers: Member[] = [
-      {
-        id: "1",
-        name: "John Dow",
-        eventsAttended: 212,
-        avatar: "/images/john-dow.jpg",
-        role: "owner"
-      },
-      {
-        id: "2",
-        name: "Jane Dow",
-        eventsAttended: 212,
-        avatar: "/images/jane-dow.jpg",
-        role: "admin"
-      },
-      {
-        id: "3",
-        name: "Jane Dow",
-        eventsAttended: 212,
-        avatar: "/images/jane-dow-2.jpg",
-        role: "member"
-      }
-    ];
+      // Fetch club members
+      const { data: membersData } = await supabase
+        .from('club_members')
+        .select(`
+          user_id,
+          role,
+          profiles!inner(full_name, avatar_url)
+        `)
+        .eq('club_id', clubData.id)
+        .limit(3);
 
-    setClub(mockClub);
-    setEvents(mockEvents);
-    setMembers(mockMembers);
+      const members: Member[] = (membersData || []).map(member => ({
+        id: member.user_id,
+        name: member.profiles.full_name || "Unknown Member",
+        eventsAttended: 212, // Mock data for now
+        avatar: member.profiles.avatar_url || "/images/default-avatar.png",
+        role: member.role as "owner" | "admin" | "member"
+      }));
+
+      setClub(club);
+      setEvents(events);
+      setMembers(members);
+    } catch (error) {
+      console.error('Error loading club data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -180,37 +241,18 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/clubs" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </Link>
-            <h1 className="text-xl font-bold text-gray-900">{club.name}</h1>
-          </div>
-          
-          {/* EDIT and DELETE buttons - Only visible to club owner */}
-          {club.isOwner && (
-            <div className="flex items-center gap-2">
-              <Link href={`/clubs/${club.slug}/edit`} className="btn-secondary flex items-center gap-2">
-                <Edit className="w-4 h-4" />
-                Edit
-              </Link>
-              <button className="btn-danger flex items-center gap-2">
-                <Trash2 className="w-4 h-4" />
-                Delete Club
-              </button>
-            </div>
-          )}
+    <>
+      <Navigation showBackButton={true} backHref="/clubs/managed" />
+      <div className="min-h-screen bg-gray-50">
+        <div className="px-4 py-4">
+        {/* Club Name Header */}
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">{club.name}</h1>
         </div>
-      </div>
 
-      <div className="container-mobile p-4">
-        {/* Club Header Image */}
+        {/* Club Header Image - Half height */}
         <div className="relative mb-6">
-          <div className="w-full h-48 bg-gradient-to-br from-green-600 to-green-800 rounded-xl overflow-hidden">
+          <div className="w-full h-32 bg-gradient-to-br from-green-600 to-green-800 rounded-xl overflow-hidden">
             {club.image ? (
               <img 
                 src={club.image} 
@@ -223,39 +265,32 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
               </div>
             )}
           </div>
-          
-          {/* Edit button overlay - Only visible to club owner */}
-          {club.isOwner && (
-            <div className="absolute top-4 right-4">
-              <Link href={`/clubs/${club.slug}/edit`} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-                <Edit className="w-4 h-4" />
-                Edit
-              </Link>
-            </div>
-          )}
         </div>
 
-        {/* Hosted by Section */}
-        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-          <h2 className="font-bold text-gray-900 mb-3">Hosted by</h2>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              {club.host.avatar ? (
-                <img 
-                  src={club.host.avatar} 
-                  alt={club.host.name}
-                  className="w-full h-full object-cover rounded-full"
-                />
-              ) : (
-                <span className="text-white font-bold text-lg">
-                  {club.host.name.charAt(0).toUpperCase()}
-                </span>
-              )}
+        {/* Hosted by Section - Matching reference design */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+                {club.host.avatar ? (
+                  <img 
+                    src={club.host.avatar} 
+                    alt={club.host.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white font-bold text-lg">
+                    {club.host.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Hosted by</div>
+                <div className="font-medium text-gray-900">{club.host.name}</div>
+              </div>
             </div>
-            <div>
-              <div className="font-medium text-gray-900">{club.host.name}</div>
-              <div className="flex items-center gap-1 text-sm text-gray-600">
-                <span>Rated:</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
                 <div className="flex gap-1">
                   {[...Array(5)].map((_, i) => (
                     <Star 
@@ -270,63 +305,71 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
           </div>
         </div>
 
-        {/* Club Description Section */}
-        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-          <h2 className="font-bold text-gray-900 mb-3">Club Description</h2>
-          <div className="flex items-start gap-3">
-            <p className="text-gray-600 flex-1">{club.description}</p>
-            <div className="flex items-center gap-1 text-gray-600">
+        {/* Club Description Section - Matching reference design */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-gray-900">Club Description</h3>
+            {club.isOwner && (
+              <Link href={`/clubs/${club.slug}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
+                Edit Club
+              </Link>
+            )}
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="flex-1 w-3/4">
+              <p className="text-gray-600 text-sm leading-relaxed">{club.description}</p>
+            </div>
+            <div className="flex items-center gap-1 text-gray-600 w-1/4">
               <MapPin className="w-4 h-4 text-red-500" />
               <span className="text-sm">{club.address}</span>
             </div>
           </div>
         </div>
 
-        {/* Club Rules Section */}
-        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-          <h2 className="font-bold text-gray-900 mb-3">Club Rules</h2>
-          <p className="text-gray-600">{club.rules}</p>
+        {/* Club Rules Section - Matching reference design */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-900 mb-2">Club Rules</h3>
+          <p className="text-gray-600 text-sm">{club.rules}</p>
         </div>
 
-        {/* Upcoming Events Section */}
-        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-          <h2 className="font-bold text-gray-900 mb-3">Upcoming Events</h2>
+        {/* Upcoming Events Section - Matching second screenshot design */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-900 mb-3">Upcoming Events</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {events.map((event) => (
+            {events.map((event, index) => (
               <div key={event.id} className="flex-shrink-0 w-48">
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                  {/* Event Image */}
-                  <div className="h-24 bg-gradient-to-r from-blue-500 to-purple-600 relative">
-                    {event.image ? (
-                      <img 
-                        src={event.image} 
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                        <span className="text-white text-lg font-bold">{event.gameType}</span>
-                      </div>
-                    )}
-                    
-                    {/* Manage button - Only visible to club owner */}
-                    {club.isOwner && (
-                      <div className="absolute top-2 right-2">
-                        <Link href={`/events/${event.id}/manage`} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors">
-                          <Edit className="w-3 h-3" />
-                          Manage
-                        </Link>
-                      </div>
-                    )}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden h-40">
+                  {/* Colored Header */}
+                  <div className={`h-16 flex items-center justify-center ${
+                    index === 0 ? 'bg-green-600' : 
+                    index === 1 ? 'bg-gray-600' : 
+                    'bg-blue-600'
+                  }`}>
+                    <div className="text-center text-white">
+                      <div className="text-lg font-bold">{event.title}</div>
+                      <div className="text-xs opacity-90">{event.gameType}</div>
+                    </div>
                   </div>
-
+                  
                   {/* Event Details */}
-                  <div className="p-3">
-                    <h3 className="font-bold text-gray-900 text-sm mb-2">{event.title}</h3>
+                  <div className="p-3 h-24 flex flex-col justify-between">
                     <div className="space-y-1 text-xs text-gray-600">
                       <div>BUYIN: ${event.buyin}</div>
-                      <div>AVAILABLE SEATS: {event.availableSeats} / {event.totalSeats}</div>
+                      <div>SEATS: {event.availableSeats}/{event.totalSeats}</div>
                       <div>DATE: {event.date}</div>
+                    </div>
+                    
+                    {/* Action Button */}
+                    <div className="mt-2">
+                      {club.isOwner ? (
+                        <Link href={`/events/${event.id}/manage`} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded text-center block transition-colors">
+                          Manage
+                        </Link>
+                      ) : (
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded transition-colors">
+                          Register
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -335,10 +378,10 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
           </div>
         </div>
 
-        {/* Members Section */}
-        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+        {/* Members Section - Same size and shape cards */}
+        <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900">Members</h2>
+            <h3 className="font-semibold text-gray-900">Members</h3>
             <Link href={`/clubs/${club.slug}/members`} className="text-blue-600 hover:underline text-sm">
               All members
             </Link>
@@ -346,9 +389,8 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {members.map((member) => (
               <div key={member.id} className="flex-shrink-0 w-32">
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow relative">
-                  {/* Member Avatar */}
-                  <div className="h-20 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                <div className="bg-white rounded-lg border border-gray-200 p-3 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 overflow-hidden">
                     {member.avatar ? (
                       <img 
                         src={member.avatar} 
@@ -356,29 +398,13 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-white font-bold text-lg">
+                      <span className="text-white font-bold text-sm">
                         {member.name.charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
-
-                  {/* Member Details */}
-                  <div className="p-2 text-center">
-                    <h3 className="font-medium text-gray-900 text-sm mb-1">{member.name}</h3>
-                    <p className="text-xs text-gray-600">Events Attended: {member.eventsAttended}</p>
-                  </div>
-
-                  {/* Action Icons - Only visible to club owner */}
-                  {club.isOwner && (
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      <button className="bg-blue-600 hover:bg-blue-700 text-white p-1 rounded-full transition-colors">
-                        <ChevronRight className="w-3 h-3" />
-                      </button>
-                      <button className="bg-red-600 hover:bg-red-700 text-white p-1 rounded-full transition-colors">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
+                  <h4 className="font-medium text-gray-900 text-xs mb-1">{member.name}</h4>
+                  <p className="text-xs text-gray-600">Events Attended: {member.eventsAttended}</p>
                 </div>
               </div>
             ))}
@@ -387,14 +413,15 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
 
         {/* Delete Club Button - Only visible to club owner */}
         {club.isOwner && (
-          <div className="mt-6">
-            <button className="w-full btn-danger flex items-center justify-center gap-2">
+          <div className="mt-8">
+            <button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
               <Trash2 className="w-5 h-5" />
               Delete Club
             </button>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

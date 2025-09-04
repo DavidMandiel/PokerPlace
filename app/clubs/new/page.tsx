@@ -318,10 +318,10 @@ export default function NewClubPage() {
 
   return (
     <>
-      <Navigation />
+      <Navigation showBackButton={true} backHref="/clubs/managed" />
       <div className="w-full flex flex-col px-6">
         {/* Header */}
-        <div className="mb-6 pt-6">
+        <div className="mb-6">
           <h1 className="text-4xl font-bold text-emerald-600 mb-3">Create new Club</h1>
           <p className="text-emerald-700/80 text-lg">Set up new poker community</p>
         </div>
