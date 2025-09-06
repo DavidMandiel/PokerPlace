@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,7 +15,8 @@ type Club = {
   owner_id: string;
 };
 
-export default function NewEventPage({ params }: { params: { slug: string } }) {
+export default function NewEventPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params);
   const [user, setUser] = useState<User | null>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,14 +43,14 @@ export default function NewEventPage({ params }: { params: { slug: string } }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        fetchClub(params.slug, user.id);
+        fetchClub(resolvedParams.slug, user.id);
       } else {
         router.push('/auth');
       }
     };
 
     getUser();
-  }, [supabase, params.slug, router]);
+  }, [supabase, resolvedParams.slug, router]);
 
   const fetchClub = async (slug: string, userId: string) => {
     try {
@@ -322,6 +323,7 @@ export default function NewEventPage({ params }: { params: { slug: string } }) {
     </div>
   );
 }
+
 
 
 

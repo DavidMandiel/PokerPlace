@@ -60,16 +60,16 @@ export default function DashboardPage() {
         
         if (error) {
           console.error("Supabase connection error:", error);
-          loadMockData();
+          setError("Connection error");
         } else if (user) {
           setUser(user);
-          loadMockData();
+          await loadRealData();
         } else {
-          loadMockData();
+          setError("User not authenticated");
         }
       } catch (err) {
         console.error("Error initializing Supabase:", err);
-        loadMockData();
+        setError("Failed to initialize");
       }
       
       setLoading(false);
@@ -78,273 +78,141 @@ export default function DashboardPage() {
     initializeApp();
   }, [supabaseUrl, supabaseAnonKey]);
 
-  const loadMockData = () => {
-    // Mock upcoming event (main featured event)
-    const mockUpcomingEvent: Event = {
-      id: "1",
-      title: "SUNDAY TOURNAMENT",
-      type: "tournament",
-      gameType: "TNLH",
-      buyin: 100,
-      date: "24/2/2021",
-      time: "20:00",
-      location: "Tel-Aviv, ISR",
-      availableSeats: 5,
-      totalSeats: 27,
-      privacy: "private",
-      host: {
-        name: "John Dow",
-        rating: 4,
-        eventsCreated: 212
-      },
-      userStatus: "upcoming",
-      isClubMember: true,
-      image: "/background.png"
-    };
-
-    // Mock upcoming events for horizontal scrolling
-    const mockUpcomingEvents: Event[] = [
-      {
-        id: "2",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 500,
-        date: "24/3/2021",
-        time: "20:00",
-        location: "CLUB - ACE OF SPADE",
-        availableSeats: 6,
-        totalSeats: 27,
-        privacy: "public",
-        host: {
-          name: "Club Host",
-          rating: 4,
-          eventsCreated: 150
-        },
-        userStatus: "upcoming",
-        isClubMember: true,
-        image: "/icon-app.png"
-      },
-      {
-        id: "3",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        date: "25/3/2021",
-        time: "19:00",
-        location: "CLUB - KEVES HA KVASIM",
-        availableSeats: 5,
-        totalSeats: 27,
-        privacy: "public",
-        host: {
-          name: "Club Host",
-          rating: 4,
-          eventsCreated: 89
-        },
-        userStatus: "upcoming",
-        isClubMember: true,
-        image: "/globe.svg"
-      },
-      {
-        id: "4",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 200,
-        date: "26/3/2021",
-        time: "21:00",
-        location: "Downtown Poker Club",
-        availableSeats: 3,
-        totalSeats: 20,
-        privacy: "public",
-        host: {
-          name: "Local Host",
-          rating: 4,
-          eventsCreated: 67
-        },
-        userStatus: "upcoming",
-        isClubMember: true,
-        image: "/file.svg"
+  const loadRealData = async () => {
+    try {
+      const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+      
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        setError("User not authenticated");
+        return;
       }
-    ];
 
-    // Mock other events (public/private events)
-    const mockOtherEvents: Event[] = [
-      {
-        id: "5",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        date: "24/2/2021",
-        time: "20:00",
-        location: "Public Poker Room",
-        availableSeats: 5,
-        totalSeats: 27,
-        privacy: "public",
-        host: {
-          name: "Public Host",
-          rating: 4,
-          eventsCreated: 45
-        },
-        userStatus: "other",
-        isClubMember: false,
-        image: "/next.svg"
-      },
-      {
-        id: "6",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        date: "25/2/2021",
-        time: "19:00",
-        location: "Private Club",
-        availableSeats: 5,
-        totalSeats: 27,
-        privacy: "private",
-        host: {
-          name: "Private Host",
-          rating: 4,
-          eventsCreated: 78
-        },
-        userStatus: "other",
-        isClubMember: false,
-        image: "/vercel.svg"
-      },
-      {
-        id: "7",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 150,
-        date: "26/2/2021",
-        time: "21:00",
-        location: "Exclusive Poker Club",
-        availableSeats: 2,
-        totalSeats: 15,
-        privacy: "private",
-        host: {
-          name: "Exclusive Host",
-          rating: 5,
-          eventsCreated: 120
-        },
-        userStatus: "other",
-        isClubMember: false,
-        image: "/window.svg"
+      // Fetch upcoming events (events starting from today onwards)
+      const { data: upcomingEventsData, error: upcomingEventsError } = await supabase
+        .from('events')
+        .select(`
+          id,
+          name,
+          event_type,
+          game_type,
+          buyin,
+          max_players,
+          starts_at,
+          created_by,
+          clubs!inner(name, city, country)
+        `)
+        .gte('starts_at', new Date().toISOString())
+        .order('starts_at', { ascending: true })
+        .limit(10);
+
+      if (upcomingEventsError) {
+        console.error('Error fetching upcoming events:', upcomingEventsError);
+      } else if (upcomingEventsData && upcomingEventsData.length > 0) {
+        // Get unique creator IDs
+        const creatorIds = [...new Set(upcomingEventsData.map(event => event.created_by))];
+        
+        // Fetch user profiles for creators
+        const { data: creatorProfiles } = await supabase
+          .from('user_profiles')
+          .select('id, first_name, last_name, nickname')
+          .in('id', creatorIds);
+
+        // Create a map for quick lookup
+        const profilesMap = new Map(creatorProfiles?.map(profile => [profile.id, profile]) || []);
+
+        const formattedUpcomingEvents: Event[] = upcomingEventsData.map(event => {
+          const creatorProfile = profilesMap.get(event.created_by);
+          return {
+            id: event.id,
+            title: event.name,
+            type: event.event_type as "tournament" | "cash",
+            gameType: event.game_type || "TNLH",
+            buyin: event.buyin || 100,
+            date: new Date(event.starts_at).toLocaleDateString('en-GB'),
+            time: new Date(event.starts_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            location: `${event.clubs.city}, ${event.clubs.country}`,
+            availableSeats: Math.max(0, (event.max_players || 27) - 0), // TODO: Calculate actual available seats
+            totalSeats: event.max_players || 27,
+            privacy: "public" as const,
+            host: {
+              name: creatorProfile ? 
+                `${creatorProfile.first_name || ''} ${creatorProfile.last_name || ''}`.trim() || 
+                creatorProfile.nickname || "Unknown Host" : "Unknown Host",
+              rating: 4, // Default rating
+              eventsCreated: 0 // TODO: Get actual count
+            },
+            userStatus: "upcoming" as const,
+            isClubMember: false, // TODO: Check if user is club member
+            image: "/background.png"
+          };
+        });
+
+        // Set first event as main upcoming event
+        if (formattedUpcomingEvents.length > 0) {
+          setUpcomingEvent(formattedUpcomingEvents[0]);
+          setUpcomingEvents(formattedUpcomingEvents.slice(1, 4)); // Next 3 events
+        }
+
+        // Set remaining as other events
+        setOtherEvents(formattedUpcomingEvents.slice(4));
       }
-    ];
 
-    // Mock registered events
-    const mockRegisteredEvents: Event[] = [
-      {
-        id: "8",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        date: "24/2/2021",
-        time: "20:00",
-        location: "My Local Club",
-        availableSeats: 5,
-        totalSeats: 27,
-        privacy: "private",
-        host: {
-          name: "Local Host",
-          rating: 4,
-          eventsCreated: 67
-        },
-        userStatus: "registered",
-        isClubMember: true,
-        image: "/icon-app.png"
-      },
-      {
-        id: "9",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 100,
-        date: "25/2/2021",
-        time: "19:00",
-        location: "Downtown Club",
-        availableSeats: 5,
-        totalSeats: 27,
-        privacy: "public",
-        host: {
-          name: "Downtown Host",
-          rating: 4,
-          eventsCreated: 89
-        },
-        userStatus: "registered",
-        isClubMember: true,
-        image: "/background.png"
-      },
-      {
-        id: "10",
-        title: "TNLH CASH",
-        type: "cash",
-        gameType: "TNLH",
-        buyin: 75,
-        date: "26/2/2021",
-        time: "18:00",
-        location: "Neighborhood Club",
-        availableSeats: 1,
-        totalSeats: 15,
-        privacy: "private",
-        host: {
-          name: "Neighbor Host",
-          rating: 4,
-          eventsCreated: 45
-        },
-        userStatus: "registered",
-        isClubMember: true,
-        image: "/globe.svg"
+      // Fetch suggested clubs (public clubs, limit to 3)
+      const { data: suggestedClubsData, error: suggestedClubsError } = await supabase
+        .from('clubs')
+        .select(`
+          id,
+          name,
+          slug,
+          city,
+          country,
+          visibility,
+          description,
+          icon,
+          owner_id
+        `)
+        .eq('visibility', 'public')
+        .limit(3);
+
+      if (suggestedClubsError) {
+        console.error('Error fetching suggested clubs:', suggestedClubsError);
+      } else if (suggestedClubsData) {
+        // Get member counts for each club
+        const clubsWithMembers = await Promise.all(
+          suggestedClubsData.map(async (club) => {
+            const { count: memberCount } = await supabase
+              .from('club_members')
+              .select('*', { count: 'exact', head: true })
+              .eq('club_id', club.id);
+
+            return {
+              id: club.id,
+              name: club.name,
+              slug: club.slug,
+              city: club.city,
+              visibility: club.visibility,
+              description: club.description,
+              memberCount: memberCount || 0,
+              isOwner: club.owner_id === currentUser.id,
+              image: club.icon || "/background.png"
+            };
+          })
+        );
+
+        setSuggestedClubs(clubsWithMembers);
       }
-    ];
 
-    // Mock suggested clubs
-    const mockSuggestedClubs: Club[] = [
-      {
-        id: "1",
-        name: "ACE OF SPADE",
-        slug: "ace-of-spade",
-        city: "Tel-Aviv",
-        visibility: "public",
-        description: "Premium poker club with high stakes games",
-        memberCount: 45,
-        isOwner: false,
-        image: "/icon-app.png"
-      },
-      {
-        id: "2",
-        name: "KEVES HA KVASIM",
-        slug: "keves-ha-kvasim",
-        city: "Jerusalem",
-        visibility: "private",
-        description: "Exclusive private poker club",
-        memberCount: 23,
-        isOwner: false,
-        image: "/background.png"
-      },
-      {
-        id: "3",
-        name: "VEGAS ELITE",
-        slug: "vegas-elite",
-        city: "Las Vegas",
-        visibility: "public",
-        description: "High stakes poker club",
-        memberCount: 67,
-        isOwner: false,
-        image: "/globe.svg"
-      }
-    ];
+      // TODO: Fetch registered events for current user
+      // This would require an event_registrations table
+      setRegisteredEvents([]);
 
-    setUpcomingEvent(mockUpcomingEvent);
-    setUpcomingEvents(mockUpcomingEvents);
-    setOtherEvents(mockOtherEvents);
-    setRegisteredEvents(mockRegisteredEvents);
-    setSuggestedClubs(mockSuggestedClubs);
+    } catch (error) {
+      console.error('Error loading real data:', error);
+      setError("Failed to load data");
+    }
   };
 
   if (loading) {
@@ -355,6 +223,26 @@ export default function DashboardPage() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Navigation />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Error</h1>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="text-blue-600 hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -383,7 +271,7 @@ export default function DashboardPage() {
 
       <div className="container-mobile">
         {/* Your Next Event Section - Half height card */}
-        {upcomingEvent && (
+        {upcomingEvent ? (
           <div className="mt-6 mb-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {/* Event Image/Logo Header - Half height */}
@@ -434,6 +322,16 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        ) : (
+          <div className="mt-6 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Upcoming Events</h3>
+              <p className="text-gray-600 mb-4">There are no upcoming events at the moment.</p>
+              <Link href="/events/new" className="text-blue-600 hover:underline">
+                Create your first event
+              </Link>
+            </div>
+          </div>
         )}
 
         {/* Managed Clubs Button */}
@@ -447,9 +345,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Upcoming Events Section - Full width background header */}
-        <div className="mb-8 -mx-4">
-          <div className="bg-blue-600 text-white px-4 py-3 mb-4">
+        {/* Upcoming Events Section - Container width background header */}
+        <div className="mb-8">
+          <div className="bg-blue-600 text-white rounded-lg py-3 px-4 mb-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Upcoming Events</h2>
               <Link href="/events/upcoming" className="text-blue-200 text-sm hover:underline">
@@ -457,7 +355,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
-          <div className="px-4">
+          {upcomingEvents.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {upcomingEvents.map((event) => (
                 <div key={event.id} className="flex-shrink-0 w-48">
@@ -465,15 +363,19 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No additional upcoming events</p>
+            </div>
+          )}
         </div>
 
-        {/* Other Events Section - Full width background header */}
-        <div className="mb-8 -mx-4">
-          <div className="bg-green-600 text-white px-4 py-3 mb-4">
+        {/* Other Events Section - Container width background header */}
+        <div className="mb-8">
+          <div className="bg-green-600 text-white rounded-lg py-3 px-4 mb-4">
             <h2 className="text-lg font-semibold">Other Events</h2>
           </div>
-          <div className="px-4">
+          {otherEvents.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {otherEvents.map((event) => (
                 <div key={event.id} className="flex-shrink-0 w-48">
@@ -481,15 +383,19 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No other events available</p>
+            </div>
+          )}
         </div>
 
-        {/* Registered Events Section - Full width background header */}
-        <div className="mb-8 -mx-4">
-          <div className="bg-pink-600 text-white px-4 py-3 mb-4">
+        {/* Registered Events Section - Container width background header */}
+        <div className="mb-8">
+          <div className="bg-pink-600 text-white rounded-lg py-3 px-4 mb-4">
             <h2 className="text-lg font-semibold">Registered Events</h2>
           </div>
-          <div className="px-4">
+          {registeredEvents.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {registeredEvents.map((event) => (
                 <div key={event.id} className="flex-shrink-0 w-48">
@@ -497,15 +403,19 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No registered events</p>
+            </div>
+          )}
         </div>
 
-        {/* Suggested Clubs Section - Full width background header */}
-        <div className="mb-8 -mx-4">
-          <div className="bg-purple-600 text-white px-4 py-3 mb-4">
+        {/* Suggested Clubs Section - Container width background header */}
+        <div className="mb-8">
+          <div className="bg-purple-600 text-white rounded-lg py-3 px-4 mb-4">
             <h2 className="text-lg font-semibold">Suggested Clubs</h2>
           </div>
-          <div className="px-4">
+          {suggestedClubs.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {suggestedClubs.map((club) => (
                 <div key={club.id} className="flex-shrink-0 w-48">
@@ -513,7 +423,14 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No clubs available</p>
+              <Link href="/clubs/new" className="text-blue-600 hover:underline mt-2 inline-block">
+                Create your first club
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

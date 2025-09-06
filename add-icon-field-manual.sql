@@ -24,3 +24,5 @@ SELECT id, name, icon FROM public.clubs LIMIT 5;
 
 
 
+
+

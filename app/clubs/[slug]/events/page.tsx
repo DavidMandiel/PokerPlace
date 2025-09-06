@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Plus } from "lucide-react";
@@ -14,7 +14,8 @@ type Club = {
   owner_id: string;
 };
 
-export default function ClubEventsPage({ params }: { params: { slug: string } }) {
+export default function ClubEventsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params);
   const [user, setUser] = useState<User | null>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,14 +30,14 @@ export default function ClubEventsPage({ params }: { params: { slug: string } })
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        fetchClub(params.slug);
+        fetchClub(resolvedParams.slug);
       } else {
-        fetchClub(params.slug);
+        fetchClub(resolvedParams.slug);
       }
     };
 
     getUser();
-  }, [supabase, params.slug]);
+  }, [supabase, resolvedParams.slug]);
 
   const fetchClub = async (slug: string) => {
     try {

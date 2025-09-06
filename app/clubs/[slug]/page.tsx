@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 import { 
@@ -11,7 +11,9 @@ import {
   Users, 
   Calendar,
   ChevronRight,
-  X
+  X,
+  MessageSquare,
+  Plus
 } from "lucide-react";
 import Navigation from "../../components/Navigation";
 
@@ -56,7 +58,8 @@ interface Member {
   role: "owner" | "admin" | "member";
 }
 
-export default function ClubDetailPage({ params }: { params: { slug: string } }) {
+export default function ClubDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params);
   const [club, setClub] = useState<Club | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -65,7 +68,7 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
 
   useEffect(() => {
     loadClubData();
-  }, [params.slug]);
+  }, [resolvedParams.slug]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,7 +102,7 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
           owner_id,
           created_at
         `)
-        .eq('slug', params.slug)
+        .eq('slug', resolvedParams.slug)
         .single();
 
       if (clubError) {
@@ -246,8 +249,14 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
       <div className="min-h-screen bg-gray-50">
         <div className="px-4 py-4">
         {/* Club Name Header */}
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{club.name}</h1>
+          {club.isOwner && (
+            <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors flex flex-col items-center gap-1">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-xs">Message</span>
+            </button>
+          )}
         </div>
 
         {/* Club Header Image - Half height */}
@@ -307,21 +316,19 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
 
         {/* Club Description Section - Matching reference design */}
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2">
             <h3 className="font-semibold text-gray-900">Club Description</h3>
-            {club.isOwner && (
-              <Link href={`/clubs/${club.slug}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
-                Edit Club
-              </Link>
-            )}
           </div>
           <div className="flex items-start gap-4">
             <div className="flex-1 w-3/4">
               <p className="text-gray-600 text-sm leading-relaxed">{club.description}</p>
             </div>
-            <div className="flex items-center gap-1 text-gray-600 w-1/4">
-              <MapPin className="w-4 h-4 text-red-500" />
-              <span className="text-sm">{club.address}</span>
+            <div className="w-1/4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-5 h-5 text-red-500" />
+                <h4 className="font-semibold text-gray-900 text-sm">Location</h4>
+              </div>
+              <p className="text-gray-600 text-sm">{club.address}</p>
             </div>
           </div>
         </div>
@@ -331,6 +338,22 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
           <h3 className="font-semibold text-gray-900 mb-2">Club Rules</h3>
           <p className="text-gray-600 text-sm">{club.rules}</p>
         </div>
+
+        {/* Action Buttons Row - Only visible to club owner */}
+        {club.isOwner && (
+          <div className="mb-6">
+            <div className="flex gap-3">
+              <Link href={`/clubs/${club.slug}/edit`} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium transition-colors flex flex-col items-center justify-center gap-2">
+                <Edit className="w-5 h-5" />
+                <span>Edit Club</span>
+              </Link>
+              <Link href="/events/new" className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm font-medium transition-colors flex flex-col items-center justify-center gap-2">
+                <Plus className="w-5 h-5" />
+                <span>Create New Event</span>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Upcoming Events Section - Matching second screenshot design */}
         <div className="mb-6">
@@ -411,15 +434,16 @@ export default function ClubDetailPage({ params }: { params: { slug: string } })
           </div>
         </div>
 
-        {/* Delete Club Button - Only visible to club owner */}
+        {/* Delete Club Button - Only visible to club owner, at bottom */}
         {club.isOwner && (
-          <div className="mt-8">
-            <button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+          <div className="mt-8 pb-4">
+            <button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex flex-col items-center justify-center gap-2">
               <Trash2 className="w-5 h-5" />
-              Delete Club
+              <span>Delete Club</span>
             </button>
           </div>
         )}
+
         </div>
       </div>
     </>

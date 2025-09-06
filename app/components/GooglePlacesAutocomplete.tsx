@@ -66,7 +66,7 @@ export default function GooglePlacesAutocomplete({
         const service = new google.maps.places.AutocompleteService();
         const request = {
           input: inputValue,
-          types: ['address'],
+          types: ['(cities)'], // Limit to cities and countries only
           language: 'en', // Get English results for consistency
           region: 'us' // Bias results to US, but will work globally
         };
